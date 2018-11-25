@@ -24,7 +24,7 @@ public abstract class DbProc implements LoaderManager.LoaderCallbacks<Cursor>{
 
     protected final Context context;
 
-    Db db = null;
+    Db db;
 
     DbProc(Context context) {
         // Сохраняем ссылку на контекст.

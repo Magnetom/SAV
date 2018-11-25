@@ -1,5 +1,6 @@
 package odyssey.projects.db;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -8,7 +9,11 @@ import android.database.Cursor;
 import android.support.annotation.NonNull;
 import android.support.v4.content.CursorLoader;
 import android.support.v7.app.AppCompatActivity;
+import android.util.SparseBooleanArray;
+import android.view.DragEvent;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.View.OnDragListener;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListView;
@@ -17,14 +22,20 @@ import android.widget.TextView;
 
 import odyssey.projects.adapter.MarksCursorAdapter;
 import odyssey.projects.adapter.VehiclesCursorAdapterNew;
+import odyssey.projects.intf.VehicleSelectedCallback;
 import odyssey.projects.sav.driver.R;
 
 public final class VehiclesViewer extends DbProc {
 
     private SimpleCursorAdapter adapter;
+    private VehicleSelectedCallback callback;
 
     public VehiclesViewer(Context context) {
         super(context);
+    }
+    public VehiclesViewer(Context context, VehicleSelectedCallback callback) {
+        super(context);
+        this.callback = callback;
     }
 
     /*
@@ -59,9 +70,10 @@ public final class VehiclesViewer extends DbProc {
         adapter = new VehiclesCursorAdapterNew(context, R.layout.vehicles_list_item, null, from, to, 0);
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     void setupListView() {
-        ListView listView = (ListView) (((AppCompatActivity) context).findViewById(R.id.vehiclesIdList));
+        final ListView listView = (((AppCompatActivity) context).findViewById(R.id.vehiclesIdList));
         if (listView == null) return;
 
         // Настраиваем view для случая пустого списка.
@@ -75,32 +87,42 @@ public final class VehiclesViewer extends DbProc {
         listView.setAdapter(adapter);
         listView.setDivider(context.getResources().getDrawable(android.R.color.transparent));
 
-        // Включаем возможность длительной кликабельности.
         listView.setLongClickable(true);
+        listView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
+
+        /*
+        // Ручная настройка времени длительного клика.
+        listView.setOnTouchListener(new View.OnTouchListener() {
+            private long then;
+            private int  longClickDur= 1500;
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                    then = (long) System.currentTimeMillis();
+                } else if (event.getAction() == MotionEvent.ACTION_UP) {
+                    if ((System.currentTimeMillis() - then) > longClickDur) {
+                        // LONG CLICK
+                        return true;
+                    } else {
+                        // SHORT CLICK
+                        return false;
+                    }
+                }
+                return false;
+            }
+        });
+        */
 
         // Настраиваем слушателя выбора строки.
-        listView.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                TextView vehicle = (TextView)view.findViewById(R.id.vehicleItemView);
-
-                /*
-                // Готовим данные для возврата их в родительскую активити.
-                Intent intent = new Intent();
-                intent.putExtra("VEHICLE", vehicle.getText().toString());
-                setResult(RESULT_OK, intent);
-
-                // Завершаем текущую активити.
-                finish();
-                */
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                  TextView vehicle = (TextView)view.findViewById(R.id.vehicleItemView);
+                if (callback != null) callback.onSelected(vehicle.getText().toString());
             }
         });
 
+        // Настраиваем слушателя на запрос удаления строки.
         listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
@@ -125,9 +147,10 @@ public final class VehiclesViewer extends DbProc {
                         })
                         .create()
                         .show();
-                return false;
+                return true;
             }
         });
+
     }
 
     @Override

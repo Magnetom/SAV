@@ -14,4 +14,7 @@
     <color name="colorTextActive">#fac552</color>
     <color name="colorTextNormal">#e5e5e5</color>
 
+    <color name="colorSwitchTrack">#ffc952</color>
+
+
 </resources>

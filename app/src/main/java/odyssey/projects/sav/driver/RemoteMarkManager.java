@@ -34,6 +34,12 @@ public final class RemoteMarkManager {
     private static final int MSG_MARK    = 1;
     private static final int MSG_UNBLOCK = 2;
 
+    public enum StatusEnum {
+        NO_INIT, IDLE, CONNECTING, CONNECTED, MARKED_SUCCESS, FAIL, STOPPED
+    }
+
+    private static StatusEnum Status = StatusEnum.NO_INIT;
+
     private static HandlerThread queueThreadHandler = null;
     private static Handler queueHandler = null;
     private static RequestQueue requestQueue = null;
@@ -82,6 +88,8 @@ public final class RemoteMarkManager {
                     queueHandler.sendMessageDelayed(Message.obtain(msg), MINUTES_5);
                     break;
                 }
+
+                sendStatusReport(StatusEnum.CONNECTING);
 
                 // Возможность отметки на сервере разблокирована! Пробуем отметится.
                 // Сначала проверяем, подключены ли мы к сети WiFi. Для этого нам необходимо узнать контекст.
@@ -134,10 +142,6 @@ public final class RemoteMarkManager {
                                              else
                                                  delay = delay * MINUTES_1; // Время необходимой задержки от сервера мы получаем в секундах. Переводим его в миллисеунды.
 
-
-                                             //Message m = new Message();
-                                             //m.copyFrom(ms);
-
                                              // Взводим курок заново ...
                                              queueHandler.sendMessageDelayed(Message.obtain(msg_copy), delay);
 
@@ -168,15 +172,18 @@ public final class RemoteMarkManager {
                                  @Override
                                  public void onError(Object obj) {
                                      DebugUtils.debugPrintVolleyError(context, obj, TAG);
+                                     recoverAfterFail();
                                  }
                              });
                          } else{ // Сервер не доступен!
                              // Проверим доступность сети через несколько секунд.
                              queueHandler.sendMessageDelayed(Message.obtain(msg), SECONDS_30);
+                             sendStatusReport(StatusEnum.IDLE);
                          }
                     } else { // Сеть WiFi не активна!
                          // Проверим доступность сети через несколько секунд.
                          queueHandler.sendMessageDelayed(Message.obtain(msg), SECONDS_10);
+                         sendStatusReport(StatusEnum.IDLE);
                      }
                 }
                 break;
@@ -185,9 +192,21 @@ public final class RemoteMarkManager {
 
     private static void recoverAfterFail(){
         /**/
+        sendStatusReport(StatusEnum.STOPPED);
+    }
+
+    // Отослать отчет о статус в главное активити.
+    private static void sendStatusReport(StatusEnum status){
+        // Получаем обработчик событий и сообщений в главном активити.
+        if (MainActivity.getMainHandler() != null){
+            MainActivity.getMainHandler().sendMessage(Message.obtain(MainActivity.getMainHandler(), MainActivity.MSG_MM_CHANGE_STATUS, status));
+        }
     }
 
     public static void init(Context context){
+        // Отсылаем отчет в главное активити.
+        sendStatusReport(StatusEnum.NO_INIT);
+
         // Основная инициалзация статических элементов.
         init();
 
@@ -213,13 +232,17 @@ public final class RemoteMarkManager {
         // Удаляем из очереди все имеющиеся сообщения, если таковые имеются.
         queueHandler.removeCallbacksAndMessages(null);
         // Запускаем обработчик запросов (периодические запросы на отметку на сервере).
-        //queueHandler.sendMessage(Message.obtain(queueHandler, MSG_MARK, context));
+        queueHandler.sendMessage(Message.obtain(queueHandler, MSG_MARK, context));
+
+        // Отсылаем отчет в главное активити.
+        sendStatusReport(StatusEnum.IDLE);
         return true;
     }
 
     public static void stop(){
         // Удаляем из очереди все имеющиеся сообщения, если таковые имеются.
         queueHandler.removeCallbacksAndMessages(null);
+        sendStatusReport(StatusEnum.STOPPED);
     }
 
     public static void onDestroy(){

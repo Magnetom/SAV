@@ -1,7 +1,8 @@
 <resources>
     <string name="app_name">Учет ходок</string>
 
-    <string name="allowed_symbols">ABCEHKMOPSTRUYX0123456789АБВЕКМНОРСТУХ</string>
+    <string name="allowed_symbols_rus">0123456789АВЕКМНОРСТУХ</string>
+    <string name="allowed_symbols_eng_rus">ABCEHKMOPSTRUYX0123456789АВЕКМНОРСТУХ</string>
     <string name="allowed_digits">+- 0123456789.</string>
 
 </resources>

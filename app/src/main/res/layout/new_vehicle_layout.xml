@@ -32,7 +32,7 @@
             android:background="@drawable/vehicle_id_frame"
             android:padding="5dp"
             android:hint="A888MP42RUS"
-            android:digits="@string/allowed_symbols"
+            android:digits="@string/allowed_symbols_rus"
             android:textColorHint="@color/colorHintTextGray"
             android:textColor="@color/colorPrimaryDark"
             android:textSize="22sp"

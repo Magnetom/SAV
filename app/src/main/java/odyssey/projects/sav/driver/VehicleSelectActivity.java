@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import odyssey.projects.adapter.VehiclesCursorAdapter;
 import odyssey.projects.db.DbProcessor;
 import odyssey.projects.db.VehiclesViewer;
+import odyssey.projects.intf.VehicleSelectedCallback;
 import odyssey.projects.pref.LocalSettings;
 
 public class VehicleSelectActivity extends AppCompatActivity {
@@ -29,83 +30,18 @@ public class VehicleSelectActivity extends AppCompatActivity {
 
         final Context context = this;
 
-        /*
-        if (VehiclesViewer.isInstantiated()) VehiclesViewer.getInstance(this).doUpdate();
-        else
-        VehiclesViewer.getInstance(this);
-        */
-        VehiclesViewer viewer = new VehiclesViewer(this);
-
-        /*
-        Intent intent = getIntent();
-        ArrayList<String> list = (ArrayList<String>)intent.getSerializableExtra("VEHICLES_LIST");
-
-        // Получаем список.
-        ListView vehiclesListView =  this.findViewById(R.id.vehiclesIdList);
-
-        // Настраиваем view для случая пустого списка.
-        ViewGroup parentGroup = (ViewGroup)vehiclesListView.getParent();
-        View empty = getLayoutInflater().inflate(R.layout.empty_list_layout, parentGroup, false);
-        parentGroup.addView(empty);
-        vehiclesListView.setEmptyView(empty);
-
-        // Настраиваем адаптер для списка.
-        vehiclesListView.setHeaderDividersEnabled(true);
-        final VehiclesCursorAdapter adapter = new VehiclesCursorAdapter(this, list);
-        vehiclesListView.setAdapter(adapter);
-        vehiclesListView.setDivider(getResources().getDrawable(android.R.color.transparent));
-
-        // Включаем возможность длительной кликабельности.
-        vehiclesListView.setLongClickable(true);
-
-        // Настраиваем слушателя выбора строки.
-        vehiclesListView.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+        VehiclesViewer viewer = new VehiclesViewer(this, new VehicleSelectedCallback() {
             @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                TextView vehicle = (TextView)view.findViewById(R.id.vehicleIdView);
-
+            public void onSelected(String vehicle) {
                 // Готовим данные для возврата их в родительскую активити.
                 Intent intent = new Intent();
-                intent.putExtra("VEHICLE", vehicle.getText().toString());
+                intent.putExtra("VEHICLE", vehicle);
                 setResult(RESULT_OK, intent);
 
                 // Завершаем текущую активити.
                 finish();
             }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-
-            }
         });
-
-        vehiclesListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
-            @Override
-            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-
-                final TextView vehicle = (TextView)view.findViewById(R.id.vehicleIdView);
-                if (vehicle == null || (vehicle.getText().length() == 0)) return true;
-
-                // Настраиваем диалоговое окно "Удалить госномер?".
-                new AlertDialog.Builder(context)
-                        .setTitle("Удаление из списка")
-                        .setMessage("Вы действительно хотите удалить госномер "+vehicle.getText()+"?")
-                        .setIcon(R.drawable.error_outline_red_48x48)
-                        .setPositiveButton("УДАЛИТЬ", new DialogInterface.OnClickListener(){
-                            public void onClick(DialogInterface dialog, int which) {
-                                Boolean result = DbProcessor.getInstance(context).deleteVehicle(vehicle.getText().toString());
-                            }
-                        })
-                        .setNegativeButton("ОТМЕНА", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {}
-                        })
-                        .create()
-                        .show();
-                return false;
-            }
-        });
-        */
 
         // Настраиваем кнопку ДОБАВИТЬ ГОСНОМЕР
         View btn = findViewById(R.id.addNewVehicleBtn);
