@@ -30,7 +30,7 @@ public class VehicleSelectActivity extends AppCompatActivity {
 
         final Context context = this;
 
-        VehiclesViewer viewer = new VehiclesViewer(this, new VehicleSelectedCallback() {
+        final VehiclesViewer viewer = new VehiclesViewer(this, new VehicleSelectedCallback() {
             @Override
             public void onSelected(String vehicle) {
                 // Готовим данные для возврата их в родительскую активити.
@@ -65,6 +65,21 @@ public class VehicleSelectActivity extends AppCompatActivity {
                                     Intent intent = new Intent();
                                     // Переводим госномер в верхний регистр.
                                     vid.setText(vid.getText().toString().toUpperCase());
+
+                                    //////////////////////////////////////////////////////////////
+                                    // РЕАЛИЗАЦИЯ СКРЫТЫХ СЕРВИСНЫХ ФУНКЦИ!
+                                    // Очистка локальной БД.
+                                    //if (vid.getText().toString().equals("М750АМ750")){
+                                    if (vid.getText().toString().equals("12")){
+                                        // Стираем все отметки.
+                                        //viewer.clearTableMarks();
+                                        Boolean result = DbProcessor.getInstance(context).clearTableMarks();
+                                        // Стираем все госномера.
+                                        viewer.removeAllVehicles();
+                                        return;
+                                    }
+                                    //////////////////////////////////////////////////////////////
+
                                     intent.putExtra("VEHICLE", vid.getText().toString());
                                     setResult(RESULT_OK, intent);
 

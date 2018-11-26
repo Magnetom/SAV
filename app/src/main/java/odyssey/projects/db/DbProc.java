@@ -123,6 +123,16 @@ public abstract class DbProc implements LoaderManager.LoaderCallbacks<Cursor>{
         return result;
     }
 
+    public boolean removeAllVehicles(){
+        try {
+            db.removeAllVehicles();
+            this.loadManagerForceLoad(context);
+            return true;
+        } catch (SQLiteException e){
+            return false;
+        }
+    }
+
     public ArrayList<String> getAllVehicles(){
         ArrayList<String> list = new ArrayList<String>();
         Cursor cursor;

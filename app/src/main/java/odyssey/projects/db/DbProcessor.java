@@ -129,9 +129,14 @@ public final class DbProcessor implements LoaderManager.LoaderCallbacks<Cursor>{
         this.loadManagerForceLoad(context);
     }
 
-    public void clearTableMarks(){
-        db.clearTableMarks();
+    public Boolean clearTableMarks(){
+        try {
+            db.clearTableMarks();
+        } catch (SQLiteException e){
+            return false;
+        }
         this.loadManagerForceLoad(context);
+        return true;
     }
 
     public Boolean deleteVehicle(String vehicle){
@@ -149,6 +154,16 @@ public final class DbProcessor implements LoaderManager.LoaderCallbacks<Cursor>{
         }
         this.loadManagerForceLoad(context);
         return result;
+    }
+
+    public boolean removeAllVehicles(){
+        try {
+            db.removeAllVehicles();
+        } catch (SQLiteException e){
+            return false;
+        }
+        this.loadManagerForceLoad(context);
+        return true;
     }
 
     public ArrayList<String> getAllVehicles(){

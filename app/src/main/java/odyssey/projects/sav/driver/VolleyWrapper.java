@@ -6,6 +6,7 @@ import android.support.annotation.Nullable;
 import android.util.Log;
 
 import com.android.volley.AuthFailureError;
+import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
@@ -13,6 +14,7 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.JsonRequest;
 import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -57,7 +59,7 @@ public class VolleyWrapper {
      *         Ответ от сервера принимается в виде json-массива.
      */
     private static void jsonRequestT(final Context context,
-                                     final RequestQueue requestQueue,
+                                           RequestQueue requestQueue,
                                      final String url,
                                      final JSONObject jsonRequest,
                                      final Map<String, String> params,
@@ -101,6 +103,16 @@ public class VolleyWrapper {
                     }
                 }) {
         };
+
+        if (requestQueue == null){
+            requestQueue = Volley.newRequestQueue(context);
+            requestQueue.getCache().clear();
+        }
+
+        arrayRequest.setRetryPolicy(new DefaultRetryPolicy(
+                DefaultRetryPolicy.DEFAULT_TIMEOUT_MS,
+                DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
         // Adding the json request to the queue.
         requestQueue.add(arrayRequest.setShouldCache(false));
     }

@@ -104,6 +104,7 @@ public final class Db {
         mDB.delete("\""+tableName+"\"",null,null);
         Log.d(TAG, "Cleared table: "+tableName);
     }
+
     // Удалить таблицу, если таковая существует
     public void deleteTable(String tableName) throws SQLiteException{
         mDB.execSQL("drop table if exists \""+tableName+"\"");
@@ -112,7 +113,7 @@ public final class Db {
 
     // Очистить таблицу @marks от всех колонок.
     public void clearTableMarks() throws SQLiteException{
-        mDB.delete("\""+TABLE_MARKS+"\"",null,null);
+        clearTable(TABLE_MARKS);
         Log.d(TAG, "Cleared table: "+TABLE_MARKS);
     }
 
@@ -178,4 +179,8 @@ public final class Db {
         return mDB.query(TABLE_VEHICLES, null, null, null, null, null, "popularity DESC");
     }
 
+    // Удалить все номера из локальной БД.
+    public void removeAllVehicles() throws SQLiteException {
+        clearTable(TABLE_VEHICLES);
+    }
 }

@@ -4,6 +4,9 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.util.Log;
+
+import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.Volley;
 
@@ -35,7 +38,7 @@ public final class RemoteMarkManager {
     private static final int MSG_UNBLOCK = 2;
 
     public enum StatusEnum {
-        NO_INIT, IDLE, CONNECTING, CONNECTED, MARKED_SUCCESS, FAIL, STOPPED
+        NO_INIT, IDLE, ACTIVATED, CONNECTING, CONNECTED, FAIL, POSTPONE, STOPPED
     }
 
     private static StatusEnum Status = StatusEnum.NO_INIT;
@@ -56,6 +59,8 @@ public final class RemoteMarkManager {
     // Транспортное средство, отметки о котором передаются в настоящий момент.
     private static String vehicle = null;
 
+    private static Handler mainActivityHandler;
+
     private static void init () {
         markBlocked = false;
 
@@ -74,6 +79,8 @@ public final class RemoteMarkManager {
     /* Основной обрботчик сообщений. */
     private static void MessagesHandler(final Message msg){
 
+        Log.i(TAG, "New message ["+msg.what+"] was arrived.");
+
         switch (msg.what){
             //-----------------------------------------------------
             // Этот функционал в настоящий момент не используется!!! Для будущего применения!
@@ -89,15 +96,20 @@ public final class RemoteMarkManager {
                     break;
                 }
 
+                // Отчет о статусе.
                 sendStatusReport(StatusEnum.CONNECTING);
+                Log.i(TAG, "Status changed to: {CONNECTING}");
 
                 // Возможность отметки на сервере разблокирована! Пробуем отметится.
                 // Сначала проверяем, подключены ли мы к сети WiFi. Для этого нам необходимо узнать контекст.
                 if ((msg.obj instanceof Context)){
 
                     final Context context = (Context)msg.obj;
+
                      // Текущая активная сеть WiFi?
                      if (isWiFiNetwork(context)){
+                         Log.i(TAG, "WiFi network is active.");
+
                          // MAC-адрес WiFi сети. Здесь можно сделать ее проверку.
                          String ssid = getWifiBSSID(context);
 
@@ -106,24 +118,35 @@ public final class RemoteMarkManager {
                          // Ок, сеть подключена.
                          // Теперь проверяем связь с сервером. Для начала - пингуем его.
                          if (isReachableByPing(Settings.DB_SERVER_IP)){
+                             Log.i(TAG, "Server "+Settings.DB_SERVER_IP+" is reachable by ping.");
+
+                             // Отчет о статусе.
+                             sendStatusReport(StatusEnum.CONNECTED);
 
                              final Message msg_copy = Message.obtain(msg);
+
+                             Log.i(TAG, "Trying do mark on server ...");
 
                              // Сервер доступен. Пытаемся выполнить отметку на сервере.
                              VolleyWrapper.doMark(context, requestQueue, null,"A888MP42RUS", new LongOpCallback() {
                                  @Override
                                  public void onSuccess(Object obj, Object param) {
                                      try {
+
                                          JSONObject jsonObject = ((JSONObject) obj);
 
                                          // Получаем статус текущего запроса на сервер.
                                          String status = jsonObject.getString("status");
 
+                                         Log.i(TAG, "Server response was received. Status: "+status);
+
                                          // При запросе на сервер не произошло никакой ошибки. Также сервер не приостановил
                                          // отметку данного гос. номера.
                                          if (!status.equals("error") && !status.equals("disabled")){
+
                                              // Получаем значение времени задержки перед следующей попыткой отметиться.
                                              int delay = jsonObject.getInt("delay");
+
                                              // Если запрос на отметку был отложен сервером, обновляем локальную базу данных.
                                              if (!status.equals("postpone")){
                                                  // Получаем список отметок за сегодня.
@@ -134,6 +157,14 @@ public final class RemoteMarkManager {
                                                      // С помощью процессора локальной БД записываем все временные метки отметок в БД.
                                                      localDbProc.addMark(today_marks.getString(ii));
                                                  }
+
+                                                 // Отчет о статусе.
+                                                 sendStatusReport(StatusEnum.IDLE);
+                                                 Log.i(TAG, "Mark done successfully. Timeout "+delay * MINUTES_1+" min. Changed status to {IDLE}.");
+                                             } else {
+                                                 // Отчет о статусе.
+                                                 sendStatusReport(StatusEnum.POSTPONE);
+                                                 Log.i(TAG, "Mark postponed (delay "+delay * MINUTES_1+" min). Changed status to {POSTPONE}.");
                                              }
 
                                              // Если значение времени задержки от сервера по каки-либо причинам пришло недостоверное, то пытаемся
@@ -149,17 +180,30 @@ public final class RemoteMarkManager {
 
                                              // Сервер вернул статус ошибки! Обрабатываем ее.
                                              if (status.equals("error")){
+
                                                  DebugUtils.debugPrintErrorStd1(context, TAG);
                                                  // Взводим курок заново ..., но ставим максимальный временной интервал на случай исправления ошибок на сервере.
                                                  queueHandler.sendMessageDelayed(Message.obtain(msg_copy), MINUTES_10);
+
+                                                 // Последовательно информируем о дву статусах. Статус возникшей ошибки FAIl система визуализации
+                                                 // задержит на некоторое время, а затем сменит на статус ACTIVATED.
+                                                 // Отчет о статусе.
+                                                 sendStatusReport(StatusEnum.FAIL);
+                                                 // Отчет о статусе.
+                                                 sendStatusReport(StatusEnum.ACTIVATED);
+                                                 Log.i(TAG, "Error was detected. Report 1. Status changed to: {FAIL}");
+                                                 Log.i(TAG, "Error was detected. Report 2. Status changed to: {ACTIVATED}");
                                              }
 
                                              // Сервер сообщил, что отметка данного гос. номера временно приостановлена.
                                              // Останавливаем попытки отметится.
                                              if (status.equals("disabled")) {
-                                                 /* Иные действия ... */
+                                                 // Отчет о статусе.
+                                                 sendStatusReport(StatusEnum.ACTIVATED);
+                                                 Log.i(TAG, "Warning: mark ability was disabled by the server! Status changed to: {ACTIVATED}");
                                                  return;
                                              }
+
                                          }
 
                                      } catch (JSONException e){
@@ -178,12 +222,14 @@ public final class RemoteMarkManager {
                          } else{ // Сервер не доступен!
                              // Проверим доступность сети через несколько секунд.
                              queueHandler.sendMessageDelayed(Message.obtain(msg), SECONDS_30);
-                             sendStatusReport(StatusEnum.IDLE);
+                             sendStatusReport(StatusEnum.ACTIVATED);
+                             Log.i(TAG, "Warning: server is unreachable! Postpone 30 sec. Change status to: {ACTIVATED}");
                          }
                     } else { // Сеть WiFi не активна!
                          // Проверим доступность сети через несколько секунд.
                          queueHandler.sendMessageDelayed(Message.obtain(msg), SECONDS_10);
-                         sendStatusReport(StatusEnum.IDLE);
+                         sendStatusReport(StatusEnum.ACTIVATED);
+                         Log.i(TAG, "Warning: WiFi network is not active! Postpone 10 sec. Change status to: {ACTIVATED}");
                      }
                 }
                 break;
@@ -192,18 +238,24 @@ public final class RemoteMarkManager {
 
     private static void recoverAfterFail(){
         /**/
+        sendStatusReport(StatusEnum.FAIL);
         sendStatusReport(StatusEnum.STOPPED);
+        Log.i(TAG, "Recover after fail. Report 1. Status changed to: {FAIL}");
+        Log.i(TAG, "Recover after fail. Report 2. Status changed to: {STOPPED}");
     }
 
     // Отослать отчет о статус в главное активити.
     private static void sendStatusReport(StatusEnum status){
         // Получаем обработчик событий и сообщений в главном активити.
-        if (MainActivity.getMainHandler() != null){
-            MainActivity.getMainHandler().sendMessage(Message.obtain(MainActivity.getMainHandler(), MainActivity.MSG_MM_CHANGE_STATUS, status));
+        if (mainActivityHandler != null){
+            mainActivityHandler.sendMessage(Message.obtain(mainActivityHandler, MainActivity.MSG_EXT_CHANGE_STATUS, status));
         }
     }
 
-    public static void init(Context context){
+    public static void init(Context context, Handler mainHandler){
+        // Обработчик сообщений в главной активити.
+        mainActivityHandler = mainHandler;
+
         // Отсылаем отчет в главное активити.
         sendStatusReport(StatusEnum.NO_INIT);
 
@@ -212,12 +264,14 @@ public final class RemoteMarkManager {
 
         // Инициализируем менеджер по работе с базой данных и визуальными компонентами, отражающими состояние базы данных.
         localDbProc = localDbProc.getInstance(context);
-        //localDbProc.addMark("2018-11-19 00:08:37");
-        //localDbProc.clearTableMarks();
 
         // Настраиваем очередь веб-запросов, если она не была настроена ранее.
-        if (requestQueue == null) requestQueue = Volley.newRequestQueue(context);
-        if (settings == null) settings = LocalSettings.getInstance(context);
+        requestQueue = Volley.newRequestQueue(context);
+        requestQueue.getCache().clear();
+
+        settings     = LocalSettings.getInstance(context);
+
+        Log.i(TAG, "MarkManager was init successfully.");
     }
 
     public static Boolean reRun(Context context){
@@ -235,7 +289,8 @@ public final class RemoteMarkManager {
         queueHandler.sendMessage(Message.obtain(queueHandler, MSG_MARK, context));
 
         // Отсылаем отчет в главное активити.
-        sendStatusReport(StatusEnum.IDLE);
+        sendStatusReport(StatusEnum.ACTIVATED);
+        Log.i(TAG, "Run/rerun triggered. Status changed to: {ACTIVATED}");
         return true;
     }
 
@@ -243,6 +298,7 @@ public final class RemoteMarkManager {
         // Удаляем из очереди все имеющиеся сообщения, если таковые имеются.
         queueHandler.removeCallbacksAndMessages(null);
         sendStatusReport(StatusEnum.STOPPED);
+        Log.i(TAG, "Stop triggered. Status changed to: {STOPPED}");
     }
 
     public static void onDestroy(){
