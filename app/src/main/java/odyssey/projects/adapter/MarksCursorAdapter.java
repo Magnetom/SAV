@@ -25,7 +25,7 @@ public class MarksCursorAdapter extends SimpleCursorAdapter {
         timestamp.setText(getHHMMFromStringTimestamp(cursor.getString(Db.TABLE_MARKS_COLUMNS.ID_COLUMN_TIMESTAMP)));
 
         TextView _id = view.findViewById(R.id.tvSeqNum);
-        String pos = Integer.valueOf(cursor.getPosition()+1).toString();
+        String pos = Integer.valueOf(cursor.getPosition() + 1).toString();
         _id.setText(pos);
 
         // Последнюю позицию в списке выделяем другим цетом, чтобы визуально лучше воспринимался конец списка.
