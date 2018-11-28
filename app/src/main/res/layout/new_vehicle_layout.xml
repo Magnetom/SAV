@@ -31,7 +31,7 @@
             android:inputType="textCapCharacters"
             android:background="@drawable/vehicle_id_frame"
             android:padding="5dp"
-            android:hint="A888MP42RUS"
+            android:hint="A888MP42"
             android:digits="@string/allowed_symbols_rus"
             android:textColorHint="@color/colorHintTextGray"
             android:textColor="@color/colorPrimaryDark"

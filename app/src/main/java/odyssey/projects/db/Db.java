@@ -13,7 +13,7 @@ public final class Db {
     public static final String TAG = "DB";
 
     // Основная информация о базе данных.
-    private static final String DB_NAME         = "savDb_v7";
+    private static final String DB_NAME         = "savDb_v8";
     private static final int    DB_VERSION      = 1;
     private static final String TABLE_MARKS     = "marks";
     private static final String TABLE_VEHICLES  = "vehicles";
@@ -21,13 +21,16 @@ public final class Db {
     // Таблица TABLE_MARKS_COLUMNS содержит информацию о всех отметках.
     public static final class TABLE_MARKS_COLUMNS {
         public static final String COLUMN_ID         = "_id";
+        public static final String COLUMN_VEHICLE    = "vehicle";
         public static final String COLUMN_TIMESTAMP  = "timestamp";
 
         public static final int ID_COLUMN_ID         = 0;
-        public static final int ID_COLUMN_TIMESTAMP  = 1;
+        public static final int ID_COLUMN_VEHICLE    = 1;
+        public static final int ID_COLUMN_TIMESTAMP  = 2;
 
         private static final String columns[]={
                 COLUMN_ID,
+                COLUMN_VEHICLE,
                 COLUMN_TIMESTAMP};
     }
 
@@ -50,6 +53,7 @@ public final class Db {
     private static final String CREATE_TABLE_MARKS = "create table if not exists "  +
             TABLE_MARKS + "(" +
             TABLE_MARKS_COLUMNS.COLUMN_ID                       + " integer primary key autoincrement, " +
+            TABLE_MARKS_COLUMNS.COLUMN_VEHICLE                  + " TEXT NOT NULL," +
             TABLE_MARKS_COLUMNS.COLUMN_TIMESTAMP                + " DATETIME NOT NULL," +
             "CONSTRAINT timestamp_unique UNIQUE ("+TABLE_MARKS_COLUMNS.COLUMN_TIMESTAMP+"));";
 
@@ -117,16 +121,38 @@ public final class Db {
         Log.d(TAG, "Cleared table: "+TABLE_MARKS);
     }
 
-    // Получить все отметки за все время.
+    // Получить все отметки за все время за все ТС.
     public Cursor getAllMarks() throws SQLiteException {
         return mDB.query(TABLE_MARKS, null, null, null, null, null, null);
     }
 
+    // Получить все отметки за все время по конкретному ТС.
+    public Cursor getAllMarks(String vehicle) throws SQLiteException {
+        return mDB.query(
+                TABLE_MARKS,
+                TABLE_MARKS_COLUMNS.columns,
+                TABLE_MARKS_COLUMNS.COLUMN_VEHICLE+"=\""+vehicle+"\"",
+                null,
+                null, null, null);
+    }
+
+    // Получить все отметки по конкретному ТС за указанную дату.
+    public Cursor getAllMarks(String vehicle, String timestamp) throws SQLiteException {
+        return mDB.query(
+                TABLE_MARKS,
+                TABLE_MARKS_COLUMNS.columns,
+                TABLE_MARKS_COLUMNS.COLUMN_VEHICLE+"=\""+vehicle+"\" AND" + TABLE_MARKS_COLUMNS.COLUMN_TIMESTAMP+"=\""+timestamp+"\"",
+                null,
+                null, null, null);
+    }
+
+
 
     // Добавить запись в TABLE_MARKS
-    public void addMark(String timestamp) throws SQLiteException {
+    public void addMark(String vehicle, String timestamp) throws SQLiteException {
         // Создаем контейнер типа ключ-значение.
         ContentValues cv = new ContentValues();
+        cv.put(TABLE_MARKS_COLUMNS.COLUMN_VEHICLE, vehicle);
         cv.put(TABLE_MARKS_COLUMNS.COLUMN_TIMESTAMP, timestamp);
         // Записываем данные в базу данных.
         long result = mDB.insert( TABLE_MARKS, null, cv );

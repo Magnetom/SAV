@@ -70,12 +70,14 @@ public class VehicleSelectActivity extends AppCompatActivity {
                                     // РЕАЛИЗАЦИЯ СКРЫТЫХ СЕРВИСНЫХ ФУНКЦИ!
                                     // Очистка локальной БД.
                                     //if (vid.getText().toString().equals("М750АМ750")){
-                                    if (vid.getText().toString().equals("12")){
+                                    if (vid.getText().toString().equals("123456")){
                                         // Стираем все отметки.
                                         //viewer.clearTableMarks();
                                         Boolean result = DbProcessor.getInstance(context).clearTableMarks();
                                         // Стираем все госномера.
                                         viewer.removeAllVehicles();
+                                        // Стираем текущее ТС.
+                                        LocalSettings.getInstance(context).saveText(LocalSettings.SP_VEHICLE, "");
                                         return;
                                     }
                                     //////////////////////////////////////////////////////////////

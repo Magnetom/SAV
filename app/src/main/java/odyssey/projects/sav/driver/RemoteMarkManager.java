@@ -128,7 +128,7 @@ public final class RemoteMarkManager {
                              Log.i(TAG, "Trying do mark on server ...");
 
                              // Сервер доступен. Пытаемся выполнить отметку на сервере.
-                             VolleyWrapper.doMark(context, requestQueue, null,"A888MP42RUS", new LongOpCallback() {
+                             VolleyWrapper.doMark(context, requestQueue, null,vehicle, new LongOpCallback() {
                                  @Override
                                  public void onSuccess(Object obj, Object param) {
                                      try {
@@ -155,7 +155,7 @@ public final class RemoteMarkManager {
                                                  // Добавляем все сегодняшние отметки, если они имеются, в локальную базу данных.
                                                  for (int ii=0; ii<today_marks.length();ii++){
                                                      // С помощью процессора локальной БД записываем все временные метки отметок в БД.
-                                                     localDbProc.addMark(today_marks.getString(ii));
+                                                     localDbProc.addMark(vehicle, today_marks.getString(ii));
                                                  }
 
                                                  // Отчет о статусе.
@@ -269,7 +269,7 @@ public final class RemoteMarkManager {
         requestQueue = Volley.newRequestQueue(context);
         requestQueue.getCache().clear();
 
-        settings     = LocalSettings.getInstance(context);
+        settings = LocalSettings.getInstance(context);
 
         Log.i(TAG, "MarkManager was init successfully.");
     }

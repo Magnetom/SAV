@@ -69,6 +69,9 @@ public class VehiclesCursorAdapter extends BaseAdapter {
         TextView vehicleIdView = (TextView) convertView.findViewById(R.id.vehicleIdView);
         vehicleIdView.setText((String)getItem(position));
 
+        //TextView currDateView = (TextView) convertView.findViewById(R.id.currDateView);
+        //if (currDateView != null) currDateView.setText("888");
+
         return convertView;
     }
 }

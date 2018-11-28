@@ -9,6 +9,7 @@ package odyssey.projects.sav.driver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Message;
 import android.support.constraint.ConstraintLayout;
 import android.support.v7.app.AppCompatActivity;
@@ -22,6 +23,9 @@ import odyssey.projects.db.DbProcessor;
 import odyssey.projects.pref.LocalSettings;
 import pl.droidsonroids.gif.GifImageView;
 
+import static odyssey.projects.utils.DateTimeUtils.getCurrentTimeStamp;
+import static odyssey.projects.utils.DateTimeUtils.getDDMMYYYY;
+
 public class MainActivity extends AppCompatActivity {
 
     public static final int MSG_INT_UNBLOCK       = 1;
@@ -29,6 +33,9 @@ public class MainActivity extends AppCompatActivity {
 
     // Кнопка, на которой отображается текущий выбранный госномер.
     TextView vehicleFrameButton;
+
+    // Текущая дата списка отметок.
+    TextView currDate;
 
     // Анимация, которая отображает статус менеджера маркеров.
     GifImageView gifImage;
@@ -42,15 +49,6 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         //Основная инициализация.
         mainInit();
-
-        this.findViewById(R.id.MyTestButton).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Boolean result = DbProcessor.getInstance(getApplication()).insertVehicle("H750AM750");
-                int ii = 0;
-            }
-        });
-
     }
 
     @Override
@@ -69,17 +67,20 @@ public class MainActivity extends AppCompatActivity {
         RemoteMarkManager.init(this, queueHandler);
     }
 
+    /*
     Handler queueHandler = new Handler(new Handler.Callback() {
         @Override
         public boolean handleMessage(Message msg) {
+            //super.handleMessage(msg);
             MessagesHandler(msg);
             return true;
         }
     });
+    */
+    private Handler queueHandler;
 
     private void MessagesHandlerInit() {
 
-        /*
         HandlerThread queueThreadHandler = new HandlerThread("MAIN_ACTIVITY_HANDLER_THREAD", android.os.Process.THREAD_PRIORITY_FOREGROUND);
         // Запускаем поток.
         queueThreadHandler.start();
@@ -90,92 +91,101 @@ public class MainActivity extends AppCompatActivity {
                 MessagesHandler(msg);
             }
         };
-        */
     }
-
-    private static Boolean blocked = false;
 
     private void MessagesHandler(Message msg) {
 
         switch (msg.what) {
             //-----------------------------------------------------
-            case MSG_INT_UNBLOCK:
-                blocked = false;
-                break;
-            //-----------------------------------------------------
             // Сообщение об изменении статуса менеджера отметок.
             case MSG_EXT_CHANGE_STATUS:
 
-                // Если обнаружено, что система визуализации временно заблоирована (для удержания какого-либо)
-                // значка на экране, то откладываем его выполнение на некоторое время.
-                if (blocked) {
-                    queueHandler.sendMessageDelayed(Message.obtain(msg), 100);
-                    return;
+                // Получаем статус системы отметок через входящее сообщение.
+                RemoteMarkManager.StatusEnum status = (RemoteMarkManager.StatusEnum)msg.obj;
+
+                try {
+                    // СТАТУСЫ МАРКЕРА
+                    switch (status){
+                        //-----------------------------------------------------
+                        // Система маркеров сообщила об ошибке. Необходимо гарантированно задержать
+                        // отображение этого значка на некоторое время, чтобы его смог заметить пользователь.
+                        case FAIL:
+                            setStatusIconFromForeignThread(R.drawable.status_fail);
+                            Thread.sleep(2000);
+                            break;
+                        //-----------------------------------------------------
+                        // Система маркеров еще не инициалиизрована.
+                        case NO_INIT:
+                            setStatusIconFromForeignThread(R.drawable.status_stopped);
+                            break;
+                        //-----------------------------------------------------
+                        // Система маркеров отсановлена.
+                        case STOPPED:
+                            setStatusIconFromForeignThread(R.drawable.status_stopped);
+                            // Переводим переключатель в состояние ОТКЛ.
+                            setSwitchFromForeignThread(false);
+                            break;
+                        //-----------------------------------------------------
+                        // Система маркеров запущена.
+                        case ACTIVATED:
+                            setStatusIconFromForeignThread(R.drawable.status_activated);
+                            Thread.sleep(500);
+                            break;
+                        //-----------------------------------------------------
+                        // Сеть WiFi найдена. Попытка подключиться к серверу.
+                        case CONNECTING:
+                            setStatusIconFromForeignThread(R.drawable.status_connecting);
+                            Thread.sleep(1500);
+                            break;
+                        //-----------------------------------------------------
+                        // Сервер обнаружен в сети. Попытка передать отметку.
+                        case CONNECTED:
+                            setStatusIconFromForeignThread(R.drawable.status_connected);
+                            Thread.sleep(1500);
+                            break;
+                        //-----------------------------------------------------
+                        // Произведено успешное подключение к серверу и выполнена отметка.
+                        case IDLE:
+                            setStatusIconFromForeignThread(R.drawable.status_idle);
+                            break;
+                        //-----------------------------------------------------
+                        // Сервер сообщил о том, что еще не вышел таймаут после последней отметки.
+                        case POSTPONE:
+                            setStatusIconFromForeignThread(R.drawable.status_postponded);
+                            break;
+                        //-----------------------------------------------------
+                        default:
+                            setStatusIconFromForeignThread(R.drawable.status_fail);
+                            break;
+                    }
+                    break;
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
 
-                RemoteMarkManager.StatusEnum status = (RemoteMarkManager.StatusEnum)msg.obj;
-                // СТАТУСЫ МАРКЕРА
-                switch (status){
-                    //-----------------------------------------------------
-                    // Система маркеров сообщила об ошибке. Необходимо гарантированно задержать
-                    // отображение этого значка на некоторое время, чтобы его смог заметить пользователь.
-                    case FAIL:
-                        gifImage.setImageResource(R.drawable.status_fail);
-                        blocked = true;
-                        queueHandler.sendMessageDelayed(Message.obtain(queueHandler, MSG_INT_UNBLOCK), 2000);
-                        break;
-                    //-----------------------------------------------------
-                    // Система маркеров еще не инициалиизрована.
-                    case NO_INIT:
-                        gifImage.setImageResource(R.drawable.status_stopped);
-                        break;
-                    //-----------------------------------------------------
-                    // Система маркеров отсановлена.
-                    case STOPPED:
-                        gifImage.setImageResource(R.drawable.status_stopped);
-                        // Переводим переключатель в состояние ОТКЛ.
-                        mainSwitch.setChecked(false);
-                        break;
-                    //-----------------------------------------------------
-                    // Система маркеров запущена.
-                    case ACTIVATED:
-                        gifImage.setImageResource(R.drawable.status_activated);
-                        blocked = true;
-                        queueHandler.sendMessageDelayed(Message.obtain(queueHandler, MSG_INT_UNBLOCK), 500);
-                        break;
-                    //-----------------------------------------------------
-                    // Сеть WiFi найдена. Попытка подключиться к серверу.
-                    case CONNECTING:
-                        gifImage.setImageResource(R.drawable.status_connecting);
-                        blocked = true;
-                        queueHandler.sendMessageDelayed(Message.obtain(queueHandler, MSG_INT_UNBLOCK), 1500);
-                        break;
-                    //-----------------------------------------------------
-                    // Сервер обнаружен в сети. Попытка передать отметку.
-                    case CONNECTED:
-                        gifImage.setImageResource(R.drawable.status_connected);
-                        blocked = true;
-                        queueHandler.sendMessageDelayed(Message.obtain(queueHandler, MSG_INT_UNBLOCK), 1500);
-                        break;
-                    //-----------------------------------------------------
-                    // Произведено успешное подключение к серверу и выполнена отметка.
-                    case IDLE:
-                        gifImage.setImageResource(R.drawable.status_idle);
-                        break;
-                    //-----------------------------------------------------
-                    // Сервер сообщил о том, что еще не вышел таймаут после последней отметки.
-                    case POSTPONE:
-                        gifImage.setImageResource(R.drawable.status_postponded);
-                        break;
-                    //-----------------------------------------------------
-                    default:
-                        gifImage.setImageResource(R.drawable.status_fail);
-                        break;
-                }
-                break;
             //-----------------------------------------------------
             default:break;
         }
+    }
+
+    // Изменяет иконку статуса из потока, отличного от MainUI Thread.
+    private void setStatusIconFromForeignThread(final int resId){
+        this.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                gifImage.setImageResource(resId);
+            }
+        });
+    }
+
+    // Изменяет переключатель ОТКЛ./АВТО из потока, отличного от MainUI Thread..
+    private void setSwitchFromForeignThread(final boolean checked){
+        this.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mainSwitch.setChecked(checked);
+            }
+        });
     }
 
     // Инициализация слушателей на нажатие объектов.
@@ -226,6 +236,10 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+
+        /* ЗАГОЛОВОК СПИСКА ОТМЕТОК - ТЕКУЩАЯ ДАТА */
+        currDate = findViewById(R.id.currDateView);
+        currDate.setText(getDDMMYYYY(System.currentTimeMillis()));
     }
 
     @Override
@@ -244,15 +258,15 @@ public class MainActivity extends AppCompatActivity {
             Boolean result = DbProcessor.getInstance(this).insertVehicle(vehicle);
             //Boolean result = VehiclesViewer.getInstance(this).insertVehicle(vehicle);
 
-            // Обновляем содержимое кнопки.
-            vehicleFrameButton.setText(vehicle);
-
             // Запускаем менеджер управления отметками.
             //RemoteMarkManager.reRun(this);
 
             // Останавливаем менеджер управления отметками.
             RemoteMarkManager.stop();
         }
+
+        // Обновляем содержимое кнопки.
+        vehicleFrameButton.setText( vehicle.equals("")?"--------":vehicle);
     }
 
 }

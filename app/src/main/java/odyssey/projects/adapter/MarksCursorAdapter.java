@@ -2,12 +2,15 @@ package odyssey.projects.adapter;
 
 import android.content.Context;
 import android.database.Cursor;
+import android.support.constraint.ConstraintLayout;
 import android.view.View;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 
 import odyssey.projects.db.Db;
 import odyssey.projects.sav.driver.R;
+
+import static odyssey.projects.utils.DateTimeUtils.getHHMMFromStringTimestamp;
 
 public class MarksCursorAdapter extends SimpleCursorAdapter {
 
@@ -19,7 +22,19 @@ public class MarksCursorAdapter extends SimpleCursorAdapter {
     public void bindView(View view, Context context, Cursor cursor) {
 
         TextView timestamp = view.findViewById(R.id.tvTimestamp);
-        timestamp.setText(cursor.getString(Db.TABLE_MARKS_COLUMNS.ID_COLUMN_TIMESTAMP));
+        timestamp.setText(getHHMMFromStringTimestamp(cursor.getString(Db.TABLE_MARKS_COLUMNS.ID_COLUMN_TIMESTAMP)));
 
+        TextView _id = view.findViewById(R.id.tvSeqNum);
+        String pos = Integer.valueOf(cursor.getPosition()+1).toString();
+        _id.setText(pos);
+
+        // Последнюю позицию в списке выделяем другим цетом, чтобы визуально лучше воспринимался конец списка.
+        if (cursor.getCount() == (cursor.getPosition()+1)){
+            // Получаем ссылку на графический элемент (квадратная рамка со скругленными краями, которая обрамляет
+            // последовательный номер элемента в списке).
+            ConstraintLayout container = view.findViewById(R.id.sequenceContainer);
+            //container.setBackgroundColor(context.getResources().getColor(R.color.colorAccent));
+            container.setBackgroundResource(R.drawable.square_marked);
+        }
     }
 }

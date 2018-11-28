@@ -11,11 +11,15 @@ import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ListView;
 
 import java.util.ArrayList;
 
 import odyssey.projects.adapter.MarksCursorAdapter;
+import odyssey.projects.pref.LocalSettings;
 import odyssey.projects.sav.driver.R;
 
 public final class DbProcessor implements LoaderManager.LoaderCallbacks<Cursor>{
@@ -25,6 +29,8 @@ public final class DbProcessor implements LoaderManager.LoaderCallbacks<Cursor>{
 
     private MarksCursorAdapter adapter = null;
     private Db db = null;
+
+    private ListView listView;
 
     private DbProcessor(Context context) {
         // Сохраняем ссылку на контекст.
@@ -53,10 +59,12 @@ public final class DbProcessor implements LoaderManager.LoaderCallbacks<Cursor>{
         // формируем столбцы сопоставления
         String[] from = new String[] {
                 Db.TABLE_MARKS_COLUMNS.COLUMN_ID,
+                Db.TABLE_MARKS_COLUMNS.COLUMN_VEHICLE,
                 Db.TABLE_MARKS_COLUMNS.COLUMN_TIMESTAMP};
 
         int[] to = new int[] { 0,                      // [00] Db.COLUMN_ID
-                               R.id.tvTimestamp};      // [01] Db.COLUMN_TIMESTAMP
+                               0,                      // [01] Db.COLUMN_VEHICLE
+                               R.id.tvTimestamp};      // [02] Db.COLUMN_TIMESTAMP
 
         // создаем адаптер и настраиваем список
         adapter = new MarksCursorAdapter(context, R.layout.mark_item, null, from, to, 0);
@@ -64,9 +72,22 @@ public final class DbProcessor implements LoaderManager.LoaderCallbacks<Cursor>{
 
     private void setupListView(){
 
-        ListView listView = (ListView)   (((AppCompatActivity) context).findViewById(R.id.mainListView));
-         // Присваиваем адаптер для виджета ListView
+        listView = (ListView)   (((AppCompatActivity) context).findViewById(R.id.mainListView));
+
+        // Настраиваем view для случая пустого списка.
+        ViewGroup parentGroup = (ViewGroup) listView.getParent();
+        View emptyListView = ((AppCompatActivity) context).getLayoutInflater().inflate(R.layout.empty_list_layout, parentGroup, false);
+        parentGroup.addView(emptyListView);
+        listView.setEmptyView(emptyListView);
+
+        listView.setDivider(context.getResources().getDrawable(android.R.color.transparent));
+
+        // Присваиваем адаптер для виджета ListView
         listView.setAdapter(adapter);
+
+        // Устанавливаем шапку списка.
+        //View list_header = LayoutInflater.from(this.context).inflate(R.layout.mark_list_header, null);
+        //listView.addHeaderView(list_header);
     }
 
 
@@ -101,6 +122,8 @@ public final class DbProcessor implements LoaderManager.LoaderCallbacks<Cursor>{
     @Override
     public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
         this.adapter.swapCursor(data);
+        // По окончанию обновления данных в ListView плавно перемещаемся в конец списка.
+        if (listView != null) listView.smoothScrollToPosition(listView.getCount());
     }
 
     @Override
@@ -116,7 +139,10 @@ public final class DbProcessor implements LoaderManager.LoaderCallbacks<Cursor>{
         }
         @Override
         public Cursor loadInBackground() {
-            return db.getAllMarks();
+            String current_vehicle = LocalSettings.getInstance(getContext()).getText(LocalSettings.SP_VEHICLE);
+            if (current_vehicle != null && (!current_vehicle.equals("")) ) return db.getAllMarks(current_vehicle);
+            else
+                return db.getAllMarks();
         }
     }
 
@@ -124,8 +150,8 @@ public final class DbProcessor implements LoaderManager.LoaderCallbacks<Cursor>{
         instance = null;
     }
 
-    public void addMark(String timestamp){
-        db.addMark(timestamp);
+    public void addMark(String vehicle, String timestamp){
+        db.addMark(vehicle, timestamp);
         this.loadManagerForceLoad(context);
     }
 

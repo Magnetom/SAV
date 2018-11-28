@@ -96,8 +96,8 @@ public abstract class DbProc implements LoaderManager.LoaderCallbacks<Cursor>{
 
     abstract void OnDestroy();
 
-    public void addMark(String timestamp){
-        db.addMark(timestamp);
+    public void addMark(String vehicle, String timestamp){
+        db.addMark(vehicle, timestamp);
         this.loadManagerForceLoad(context);
     }
 
