@@ -13,7 +13,7 @@ public final class Db {
     public static final String TAG = "DB";
 
     // Основная информация о базе данных.
-    private static final String DB_NAME         = "savDb_v8";
+    private static final String DB_NAME         = "savDb_v9";
     private static final int    DB_VERSION      = 1;
     private static final String TABLE_MARKS     = "marks";
     private static final String TABLE_VEHICLES  = "vehicles";
@@ -54,8 +54,7 @@ public final class Db {
             TABLE_MARKS + "(" +
             TABLE_MARKS_COLUMNS.COLUMN_ID                       + " integer primary key autoincrement, " +
             TABLE_MARKS_COLUMNS.COLUMN_VEHICLE                  + " TEXT NOT NULL," +
-            TABLE_MARKS_COLUMNS.COLUMN_TIMESTAMP                + " DATETIME NOT NULL," +
-            "CONSTRAINT timestamp_unique UNIQUE ("+TABLE_MARKS_COLUMNS.COLUMN_TIMESTAMP+"));";
+            TABLE_MARKS_COLUMNS.COLUMN_TIMESTAMP                + " DATETIME NOT NULL UNIQUE ON CONFLICT IGNORE);";
 
     private static final String CREATE_TABLE_VEHICLES = "create table if not exists "  +
             TABLE_VEHICLES + "(" +
@@ -138,10 +137,12 @@ public final class Db {
 
     // Получить все отметки по конкретному ТС за указанную дату.
     public Cursor getAllMarks(String vehicle, String timestamp) throws SQLiteException {
+        //String sel = TABLE_MARKS_COLUMNS.COLUMN_VEHICLE+"=\""+vehicle+"\" AND DATE(" + TABLE_MARKS_COLUMNS.COLUMN_TIMESTAMP+")=\""+timestamp+"\"";
+
         return mDB.query(
                 TABLE_MARKS,
                 TABLE_MARKS_COLUMNS.columns,
-                TABLE_MARKS_COLUMNS.COLUMN_VEHICLE+"=\""+vehicle+"\" AND" + TABLE_MARKS_COLUMNS.COLUMN_TIMESTAMP+"=\""+timestamp+"\"",
+                TABLE_MARKS_COLUMNS.COLUMN_VEHICLE+"=\""+vehicle+"\" AND DATE(" + TABLE_MARKS_COLUMNS.COLUMN_TIMESTAMP+")=\""+timestamp+"\"",
                 null,
                 null, null, null);
     }

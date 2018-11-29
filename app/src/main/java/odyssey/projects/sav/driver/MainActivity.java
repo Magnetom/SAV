@@ -23,25 +23,29 @@ import odyssey.projects.db.DbProcessor;
 import odyssey.projects.pref.LocalSettings;
 import pl.droidsonroids.gif.GifImageView;
 
-import static odyssey.projects.utils.DateTimeUtils.getCurrentTimeStamp;
 import static odyssey.projects.utils.DateTimeUtils.getDDMMYYYY;
 
 public class MainActivity extends AppCompatActivity {
 
-    public static final int MSG_INT_UNBLOCK       = 1;
-    public static final int MSG_EXT_CHANGE_STATUS = 2;
+    public static final int MSG_GEN_MARKS_CNT    = 1;
+    public static final int MSG_ST_CHANGE_STATUS = 2;
+
 
     // Кнопка, на которой отображается текущий выбранный госномер.
-    TextView vehicleFrameButton;
+    private TextView vehicleFrameButton;
 
     // Текущая дата списка отметок.
-    TextView currDate;
+    private TextView currDate;
 
     // Анимация, которая отображает статус менеджера маркеров.
-    GifImageView gifImage;
+    private GifImageView gifImage;
+
+    // Отображение общего количества пройденных кругов.
+    private TextView marksTotal;
 
     // переключатель "ОТКЛ./АВТО"
     SwitchCompat mainSwitch;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,41 +68,70 @@ public class MainActivity extends AppCompatActivity {
         // Регистрируем обработчики событий от нажатия различных объектов View.
         setupOnClickListeners();
         // Инициализация менеджера отметок.
-        RemoteMarkManager.init(this, queueHandler);
+        RemoteMarkManager.init(this, statusHandler, generalHandler);
     }
 
     /*
-    Handler queueHandler = new Handler(new Handler.Callback() {
+    Handler statusHandler = new Handler(new Handler.Callback() {
         @Override
         public boolean handleMessage(Message msg) {
             //super.handleMessage(msg);
-            MessagesHandler(msg);
+            StatusMessagesHandler(msg);
             return true;
         }
     });
     */
-    private Handler queueHandler;
+    private Handler statusHandler;  // Обработчик сообщений о статусе текущей отметки на удаленном сервере.
+    private Handler generalHandler; // Основной обработчик общих сообщений.
 
     private void MessagesHandlerInit() {
 
-        HandlerThread queueThreadHandler = new HandlerThread("MAIN_ACTIVITY_HANDLER_THREAD", android.os.Process.THREAD_PRIORITY_FOREGROUND);
+        /* Регистрируем обработчик изменений статуса сетевых операций (отметки на удаленном сервере). */
+        HandlerThread statusThreadHandler = new HandlerThread("STATUS_THREAD_HANDLER", android.os.Process.THREAD_PRIORITY_FOREGROUND);
         // Запускаем поток.
-        queueThreadHandler.start();
+        statusThreadHandler.start();
         // Настраиваем обработчик сообщений.
-        queueHandler = new Handler(queueThreadHandler.getLooper()) {
+        statusHandler = new Handler(statusThreadHandler.getLooper()) {
             @Override
             public void handleMessage(Message msg) {
-                MessagesHandler(msg);
+                StatusMessagesHandler(msg);
+            }
+        };
+
+        /* Регистрируем обработчик для прочих сообщений */
+        HandlerThread generalThreadHandler = new HandlerThread("GENERAL_THREAD_HANDLER", android.os.Process.THREAD_PRIORITY_FOREGROUND);
+        // Запускаем поток.
+        generalThreadHandler.start();
+        // Настраиваем обработчик сообщений.
+        generalHandler = new Handler(generalThreadHandler.getLooper()) {
+            @Override
+            public void handleMessage(Message msg) {
+                GeneralMessagesHandler(msg);
             }
         };
     }
 
-    private void MessagesHandler(Message msg) {
+    private void GeneralMessagesHandler(Message msg) {
+        switch (msg.what) {
+            //-----------------------------------------------------
+            // Сообщение об текущем количестве кругов. Приходит от обертки адаптера списка по
+            // окончанию прорисовки всех элементов списка.
+            case MSG_GEN_MARKS_CNT:
+                // Количество пройденных кругов.
+                int marks_cnt = msg.arg1;
+                setMarksTotalFromForeignThread(marks_cnt);
+                break;
+            //-----------------------------------------------------
+            default:break;
+        }
+    }
+
+    private void StatusMessagesHandler(Message msg) {
 
         switch (msg.what) {
             //-----------------------------------------------------
             // Сообщение об изменении статуса менеджера отметок.
-            case MSG_EXT_CHANGE_STATUS:
+            case MSG_ST_CHANGE_STATUS:
 
                 // Получаем статус системы отметок через входящее сообщение.
                 RemoteMarkManager.StatusEnum status = (RemoteMarkManager.StatusEnum)msg.obj;
@@ -116,12 +149,14 @@ public class MainActivity extends AppCompatActivity {
                         //-----------------------------------------------------
                         // Система маркеров еще не инициалиизрована.
                         case NO_INIT:
-                            setStatusIconFromForeignThread(R.drawable.status_stopped);
+                            //setStatusIconFromForeignThread(R.drawable.status_blocked);
+                            setStatusIconFromForeignThread(0);
                             break;
                         //-----------------------------------------------------
                         // Система маркеров отсановлена.
                         case STOPPED:
-                            setStatusIconFromForeignThread(R.drawable.status_stopped);
+                            //setStatusIconFromForeignThread(R.drawable.status_blocked);
+                            setStatusIconFromForeignThread(0);
                             // Переводим переключатель в состояние ОТКЛ.
                             setSwitchFromForeignThread(false);
                             break;
@@ -154,6 +189,11 @@ public class MainActivity extends AppCompatActivity {
                             setStatusIconFromForeignThread(R.drawable.status_postponded);
                             break;
                         //-----------------------------------------------------
+                        // Сервер сообщил о том, что еще текущий госномер заблокирован на сервере администратором ресурса.
+                        case BLOCKED:
+                            setStatusIconFromForeignThread(R.drawable.status_blocked);
+                            break;
+                        //-----------------------------------------------------
                         default:
                             setStatusIconFromForeignThread(R.drawable.status_fail);
                             break;
@@ -178,12 +218,23 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    // Изменяет переключатель ОТКЛ./АВТО из потока, отличного от MainUI Thread..
+    // Изменяет переключатель ОТКЛ./АВТО из потока, отличного от MainUI Thread.
     private void setSwitchFromForeignThread(final boolean checked){
         this.runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 mainSwitch.setChecked(checked);
+            }
+        });
+    }
+
+    // Изменяет общее значение пройденных кругов.
+    private void setMarksTotalFromForeignThread(final int cnt){
+        this.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                String text = Integer.valueOf(cnt).toString();
+                marksTotal.setText(text);
             }
         });
     }
@@ -240,6 +291,10 @@ public class MainActivity extends AppCompatActivity {
         /* ЗАГОЛОВОК СПИСКА ОТМЕТОК - ТЕКУЩАЯ ДАТА */
         currDate = findViewById(R.id.currDateView);
         currDate.setText(getDDMMYYYY(System.currentTimeMillis()));
+
+        /* ЗАГОЛОВОК СПИСКА ОТМЕТОК  - ОБЩЕЕ КОЛИЧЕСТВО ПРОЙДЕННЫХ КРУГОВ */
+        marksTotal = findViewById(R.id.totalCountValue);
+        marksTotal.setText("0");
     }
 
     @Override

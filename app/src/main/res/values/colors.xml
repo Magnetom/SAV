@@ -20,6 +20,9 @@
     <color name="colorSquareMarkLight">#b13c37</color>
     <color name="colorSquareMarkDark">#d75650</color>
 
+    <color name="colorSquareInfoInner">#a6ff00</color>
+    <color name="colorSquareInfoOuter">#558000</color>
+
 
 
 

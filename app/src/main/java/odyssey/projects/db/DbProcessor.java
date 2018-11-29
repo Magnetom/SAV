@@ -4,9 +4,12 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteException;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.constraint.ConstraintLayout;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
@@ -20,11 +23,16 @@ import java.util.ArrayList;
 
 import odyssey.projects.adapter.MarksCursorAdapter;
 import odyssey.projects.pref.LocalSettings;
+import odyssey.projects.sav.driver.MainActivity;
 import odyssey.projects.sav.driver.R;
+
+import static odyssey.projects.utils.DateTimeUtils.getTimeStamp;
+import static odyssey.projects.utils.DateTimeUtils.timestampToStringYYYYMMDD;
 
 public final class DbProcessor implements LoaderManager.LoaderCallbacks<Cursor>{
 
     private final Context context;
+    private static Handler generalHandler = null;
     private static DbProcessor instance = null;
 
     private MarksCursorAdapter adapter = null;
@@ -51,6 +59,12 @@ public final class DbProcessor implements LoaderManager.LoaderCallbacks<Cursor>{
     }
 
     public static DbProcessor getInstance(Context context){
+        if (instance == null) return instance = new DbProcessor(context);
+        return instance;
+    }
+
+    public static DbProcessor getInstance(Context context, Handler h){
+        generalHandler = h;
         if (instance == null) return instance = new DbProcessor(context);
         return instance;
     }
@@ -122,13 +136,19 @@ public final class DbProcessor implements LoaderManager.LoaderCallbacks<Cursor>{
     @Override
     public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
         this.adapter.swapCursor(data);
+
+        // Отправялем в основное активити информацию о количестве элементов в списе (количество пройденных кругов).
+        if (generalHandler != null)
+            generalHandler.sendMessage(
+                Message.obtain(
+                        generalHandler, MainActivity.MSG_GEN_MARKS_CNT, listView.getAdapter().getCount(),0)
+        );
         // По окончанию обновления данных в ListView плавно перемещаемся в конец списка.
         if (listView != null) listView.smoothScrollToPosition(listView.getCount());
     }
 
     @Override
     public void onLoaderReset(Loader<Cursor> loader) {
-        int ii = 0;
     }
 
     private static class MyCursorLoader extends CursorLoader {
@@ -140,7 +160,7 @@ public final class DbProcessor implements LoaderManager.LoaderCallbacks<Cursor>{
         @Override
         public Cursor loadInBackground() {
             String current_vehicle = LocalSettings.getInstance(getContext()).getText(LocalSettings.SP_VEHICLE);
-            if (current_vehicle != null && (!current_vehicle.equals("")) ) return db.getAllMarks(current_vehicle);
+            if (current_vehicle != null && (!current_vehicle.equals("")) ) return db.getAllMarks(current_vehicle, timestampToStringYYYYMMDD(System.currentTimeMillis()));
             else
                 return db.getAllMarks();
         }
