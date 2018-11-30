@@ -161,8 +161,10 @@
 
         <ImageView
             android:id="@+id/imageView"
-            android:layout_width="64px"
-            android:layout_height="64px"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:maxWidth="64px"
+            android:maxHeight="64px"
             android:layout_marginTop="8dp"
             android:layout_marginEnd="8dp"
             android:layout_marginBottom="8dp"

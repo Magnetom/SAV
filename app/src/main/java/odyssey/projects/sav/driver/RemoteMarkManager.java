@@ -298,7 +298,7 @@ public final class RemoteMarkManager {
         queueHandler.sendMessage(Message.obtain(queueHandler, MSG_MARK, context));
 
         // Отсылаем отчет в главное активити.
-        sendStatusReport(StatusEnum.ACTIVATED);
+        sendStatusReport(StatusEnum.STOPPED);
         Log.i(TAG, "Run/rerun triggered. Status changed to: {ACTIVATED}");
         return true;
     }
