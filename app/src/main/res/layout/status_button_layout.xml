@@ -17,8 +17,10 @@
 
         <pl.droidsonroids.gif.GifImageView
             android:id="@+id/statusGifImageView"
-            android:layout_width="64px"
-            android:layout_height="64px"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:maxWidth="64px"
+            android:maxHeight="64px"
             android:layout_marginStart="8dp"
             android:layout_marginTop="8dp"
             android:layout_marginEnd="8dp"
