@@ -290,6 +290,7 @@ public final class RemoteMarkManager {
 
         if ((vehicle == null) || vehicle.equals("")) {
             DebugUtils.debugPrintError(context,"Пожалуйста, укажите гос. номер ТС.", TAG);
+            sendStatusReport(StatusEnum.STOPPED);
             return false;
         }
         // Удаляем из очереди все имеющиеся сообщения, если таковые имеются.
@@ -298,7 +299,7 @@ public final class RemoteMarkManager {
         queueHandler.sendMessage(Message.obtain(queueHandler, MSG_MARK, context));
 
         // Отсылаем отчет в главное активити.
-        sendStatusReport(StatusEnum.STOPPED);
+        sendStatusReport(StatusEnum.ACTIVATED);
         Log.i(TAG, "Run/rerun triggered. Status changed to: {ACTIVATED}");
         return true;
     }
