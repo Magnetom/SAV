@@ -6,6 +6,7 @@ import android.os.HandlerThread;
 import android.os.Message;
 import android.util.Log;
 
+import com.android.volley.NoConnectionError;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.Volley;
 
@@ -23,6 +24,8 @@ import static odyssey.projects.utils.WebUtils.*;
 public final class RemoteMarkManager {
 
     public static final String TAG = "MARK_MANAGER";
+
+    private static boolean isStopRequested = false;
 
     public static final int SECONDS_1   = 1000;          // Одна секунда в миллисекундах.
     public static final int SECONDS_10  = 10*SECONDS_1;
@@ -56,7 +59,13 @@ public final class RemoteMarkManager {
     private static boolean markBlocked = false;
 
     // Транспортное средство, отметки о котором передаются в настоящий момент.
-    private static String vehicle = null;
+    private static String Vehicle = null;
+
+    // Разрешенный SSID адрес маршрутизатора. Считывается из локальных настроек при каждом запуске менеджера.
+    private static String AllowedSSID = null;
+
+    // Адрес или доменное имя удаленного сервера.
+    private static String ServerAddress = null;
 
     private static Handler statusHandler;
     private static Handler generalHandler;
@@ -80,6 +89,9 @@ public final class RemoteMarkManager {
     private static void MessagesHandler(final Message msg){
 
         Log.i(TAG, "New message ["+msg.what+"] was arrived.");
+
+        // Проверяем на внешний запрос остановить менеджер отметок.
+        if (stopRequestedTest()) return;
 
         switch (msg.what){
             //-----------------------------------------------------
@@ -111,24 +123,43 @@ public final class RemoteMarkManager {
                          Log.i(TAG, "WiFi network is active.");
 
                          // MAC-адрес WiFi сети. Здесь можно сделать ее проверку.
-                         String ssid = getWifiBSSID(context);
+                         String real_ssid = getWifiBSSID(context);
 
-                         // ToDo: проврека WiFi SSID.
+                         // Проврека WiFi SSID, если установлено в натройках.
+                         if (LocalSettings.getInstance(context).getBoolean(LocalSettings.SP_USE_SSID_FILTER)){
+
+                             Log.i(TAG, "WiFi SSID check is enabled. Doing it ...");
+
+                             // Если разрешенный не соответствует реальному, то завершаем попытку отметки.
+                             if (!AllowedSSID.equalsIgnoreCase(real_ssid)){
+                                 Log.i(TAG, "Current WiFi SSID "+real_ssid+" is not allowed by setting file!");
+
+                                 // Проверим доступность нужной нам сети через несколько секунд.
+                                 queueHandler.sendMessageDelayed(Message.obtain(msg), SECONDS_30);
+                                 sendStatusReport(StatusEnum.ACTIVATED);
+                                 Log.i(TAG, "Waiting for another WiFi... Postpone 30 sec. Change status to: {ACTIVATED}");
+                                 return;
+                             } else {
+                                 Log.i(TAG, "Ok, SSID "+real_ssid+" is allowed.");
+                             }
+                         }
+                         Log.i(TAG, "Connecting to the server "+ServerAddress+" ...");
 
                          // Ок, сеть подключена.
                          // Теперь проверяем связь с сервером. Для начала - пингуем его.
-                         if (isReachableByPing(Settings.DB_SERVER_IP)){
-                             Log.i(TAG, "Server "+Settings.DB_SERVER_IP+" is reachable by ping.");
+                         if (isReachableByPing(ServerAddress)){
+
+                             Log.i(TAG, "Ok, server is reachable by ping.");
 
                              // Отчет о статусе.
                              sendStatusReport(StatusEnum.CONNECTED);
 
                              final Message msg_copy = Message.obtain(msg);
 
-                             Log.i(TAG, "Trying do mark on server ...");
+                             Log.i(TAG, "Trying do mark on server with script: "+LocalSettings.getInstance(context).getScriptUrl(Settings.MARK_SCRIPT));
 
                              // Сервер доступен. Пытаемся выполнить отметку на сервере.
-                             VolleyWrapper.doMark(context, requestQueue, null,vehicle, new LongOpCallback() {
+                             VolleyWrapper.doMark(context, requestQueue, null, Vehicle, new LongOpCallback() {
                                  @Override
                                  public void onSuccess(Object obj, Object param) {
                                      try {
@@ -162,16 +193,16 @@ public final class RemoteMarkManager {
                                                  // Добавляем все сегодняшние отметки, если они имеются, в локальную базу данных.
                                                  for (int ii=0; ii<today_marks.length();ii++){
                                                      // С помощью процессора локальной БД записываем все временные метки отметок в БД.
-                                                     localDbProc.addMark(vehicle, today_marks.getString(ii));
+                                                     localDbProc.addMark(Vehicle, today_marks.getString(ii));
                                                  }
 
                                                  // Отчет о статусе.
                                                  sendStatusReport(StatusEnum.IDLE);
-                                                 Log.i(TAG, "Mark done successfully. Timeout "+delay * MINUTES_1+" min. Changed status to {IDLE}.");
+                                                 Log.i(TAG, "Mark done successfully. Timeout "+delay/MINUTES_1+" min. Changed status to {IDLE}.");
                                              } else {
                                                  // Отчет о статусе.
                                                  sendStatusReport(StatusEnum.POSTPONE);
-                                                 Log.i(TAG, "Mark postponed (delay "+delay * MINUTES_1+" min). Changed status to {POSTPONE}.");
+                                                 Log.i(TAG, "Mark postponed (delay "+delay/MINUTES_1+" min). Changed status to {POSTPONE}.");
                                              }
 
                                              // Взводим курок заново ...
@@ -222,6 +253,21 @@ public final class RemoteMarkManager {
 
                                  @Override
                                  public void onError(Object obj) {
+
+                                     // Таймаут соединения с приложением сервера на порту 80. WiFi сеть активна. Сервер доступен.
+                                     if (obj instanceof NoConnectionError){
+                                         // Удаляем из очереди все имеющиеся сообщения, если таковые имеются. Это деалется потому, что при создании запроса
+                                         // библеотека Volley делает несколько попыток соединиться и этот callback может быть вызван несколько раз через
+                                         // определенный таймаут. Чобы исклчить из очереди несколько MSG_MARK сообщений, очищем предыдущие имеющиеся в очереди.
+                                         queueHandler.removeCallbacksAndMessages(null);
+
+                                         queueHandler.sendMessageDelayed(Message.obtain(msg_copy), SECONDS_10);
+                                         sendStatusReport(StatusEnum.ACTIVATED);
+                                         Log.i(TAG, "Warning: no activity on server port 80! Postpone 10 sec. Change status to: {ACTIVATED}");
+                                         return;
+                                     }
+
+                                     // Прочие ошибки соединения.
                                      DebugUtils.debugPrintVolleyError(context, obj, TAG);
                                      recoverAfterFail();
                                  }
@@ -259,7 +305,34 @@ public final class RemoteMarkManager {
         }
     }
 
+    // Запрос на остановку менеджера отметок от внешнего модуля.
+    // Например, активити настроек может запросить остановить менеджер после изменения важных настроек.
+    public static void setStopRequest (){
+        isStopRequested = true;
+        stopRequestedTest();
+    }
+
+    private static void clrStopRequest(){
+        isStopRequested = false;
+    }
+
+    private static boolean stopRequestedTest(){
+        if (isStopRequested){
+            Log.i(TAG, "Stop request was detected!");
+            isStopRequested = false;
+            // Удаляем из очереди все имеющиеся сообщения, если таковые имеются.
+            queueHandler.removeCallbacksAndMessages(null);
+            // Отчет о статусе.
+            sendStatusReport(StatusEnum.STOPPED);
+            return true;
+        }
+        return false;
+    }
+
     public static void init(Context context, Handler h1, Handler h2){
+
+        clrStopRequest();
+
         // Обработчик сообщений о статусе в главной активити.
         statusHandler = h1;
         // Основной обработчик сообщений в главной панели.
@@ -284,17 +357,31 @@ public final class RemoteMarkManager {
     }
 
     public static Boolean reRun(Context context){
-        // Гос. номер текущего транспортного средства берем из локальных настроек.
-        vehicle = settings.getText(LocalSettings.SP_VEHICLE);
-        //if (vehicle.isEmpty()) vehicle = "A888MP42RUS"; // ТЕСТОВАЯ ЗАГЛУШКА!!!!!!!!!
+        clrStopRequest();
 
-        if ((vehicle == null) || vehicle.equals("")) {
+        // Гос. номер текущего транспортного средства берем из локальных настроек.
+        Vehicle = settings.getText(LocalSettings.SP_VEHICLE);
+
+        if ((Vehicle == null) || Vehicle.equals("")) {
             DebugUtils.debugPrintError(context,"Пожалуйста, укажите гос. номер ТС.", TAG);
             sendStatusReport(StatusEnum.STOPPED);
             return false;
         }
+
+        // Из локальных настроек считываем разрешенный SSID маршрутизатора.
+        AllowedSSID = settings.getText(LocalSettings.SP_ALLOWED_WIFI_SSID);
+        // Считываем адрес сервера.
+        ServerAddress = settings.getText(LocalSettings.SP_SERVER_ADDRESS);
+
+        if (ServerAddress == null || ServerAddress.equals("")){
+            DebugUtils.debugPrintError(context,"Пожалуйста, укажите адрес удаленного сервера в настройках вашего приложения!", TAG);
+            sendStatusReport(StatusEnum.STOPPED);
+            return false;
+        }
+
         // Удаляем из очереди все имеющиеся сообщения, если таковые имеются.
         queueHandler.removeCallbacksAndMessages(null);
+
         // Запускаем обработчик запросов (периодические запросы на отметку на сервере).
         queueHandler.sendMessage(Message.obtain(queueHandler, MSG_MARK, context));
 

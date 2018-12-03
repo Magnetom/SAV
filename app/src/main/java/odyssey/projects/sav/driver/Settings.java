@@ -1,19 +1,16 @@
 package odyssey.projects.sav.driver;
 
-import com.android.volley.RequestQueue;
-
 public class Settings {
 
-    public static final String MAIN_PROTOCOL    = "http://";
-    public static final String DB_SERVER_IP     = "192.168.1.231";
-    public static final String WORK_DIRECTORY   = "/";
+    public static final String MAIN_PROTOCOL             = "http://";
+    public static final String DB_SERVER_DEFAULT_ADDRESS = "192.168.1.231";
+    public static final String WORK_DIRECTORY            = "/";
 
-    private static final String SCRIPT_URL = MAIN_PROTOCOL + DB_SERVER_IP + WORK_DIRECTORY;
+    // Имя скрипта для отметки клиента.
+    static final String MARK_SCRIPT = "mark.php";
 
-    //URL файла скрипта mark.php.
-    static final String MARK_URL  = SCRIPT_URL + "mark.php";
-    //static final String MARK_URL  = SCRIPT_URL + "test.php";
-
+    // SSID адрес маршрутизатора по-умолчанию.
+    public static final String ALLOWED_WIFI_DEFAULT_SSID = "C0:4A:00:DA:A2:82";
 
     // Client remote access token.
     static final String CLIENT_REQUEST_TOKEN =   "F284F583BJB78IF3U8H458WUBFG8V356W8IEUF";

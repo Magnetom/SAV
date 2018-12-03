@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory
+        android:title="Управление базой данных">
+        <CheckBoxPreference
+            android:key="all_db_remove"
+            android:title="Очистить все"
+            android:summary="Обнулить все текущие настройки и удалить все накопленные данные." />
+    </PreferenceCategory>
+    <PreferenceCategory
+        android:title="Сетевые настройки">
+        <EditTextPreference
+            android:key="server_address"
+            android:title="Адрес сервера"
+            android:summary="Установить адрес сервера."
+            android:dialogTitle="Введите ip-адрес или доменное имя."
+            android:defaultValue="192.168.1.2"/>
+        <CheckBoxPreference
+            android:key="use_ssid_filter"
+            android:title="Wi-Fi SSID фильтр"
+            android:summary="Подсоединяться только к предопределенному WiFi-маршрутизатору." />
+        <EditTextPreference
+            android:key="pref_wifi_ssid"
+            android:dependency="use_ssid_filter"
+            android:title="Wi-Fi SSID"
+            android:summary="Установить одобренный SSID WiFi-маршрутизатора."
+            android:dialogTitle="Введите SSID в формате (00:00:00:00:00:00)" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

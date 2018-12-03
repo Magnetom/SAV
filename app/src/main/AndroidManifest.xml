@@ -20,7 +20,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".VehicleSelectActivity"></activity>
+        <activity android:name=".VehicleSelectActivity" />
+        <activity android:name=".LocalPrefActivity"></activity>
     </application>
 
 </manifest>

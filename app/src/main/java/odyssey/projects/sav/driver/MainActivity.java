@@ -297,6 +297,12 @@ public class MainActivity extends AppCompatActivity {
         marksTotal.setText("0");
     }
 
+    protected void updateCurrentVehicleFrame(){
+        String vehicle = LocalSettings.getInstance(this).getText(LocalSettings.SP_VEHICLE);
+        // Обновляем содержимое кнопки.
+        vehicleFrameButton.setText( vehicle.equals("")?"--------":vehicle);
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         // Проверка на отсутствие возвращаемых данных.
@@ -311,17 +317,19 @@ public class MainActivity extends AppCompatActivity {
             // Параллельно сохраняем  номер ТС в локальную БД для ведения статистики и формирования списка всех ТС,
             // используемых данным приложением.
             Boolean result = DbProcessor.getInstance(this).insertVehicle(vehicle);
-            //Boolean result = VehiclesViewer.getInstance(this).insertVehicle(vehicle);
-
-            // Запускаем менеджер управления отметками.
-            //RemoteMarkManager.reRun(this);
 
             // Останавливаем менеджер управления отметками.
             RemoteMarkManager.stop();
         }
 
         // Обновляем содержимое кнопки.
-        vehicleFrameButton.setText( vehicle.equals("")?"--------":vehicle);
+        updateCurrentVehicleFrame();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        updateCurrentVehicleFrame();
     }
 
 }

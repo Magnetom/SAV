@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#607d8b</color>
-    <color name="colorPrimaryTop">#455a64</color>
+    <color name="colorPrimary">#455a64</color>
+    <color name="colorPrimaryTop">#3a4b53</color>
     <color name="colorPrimaryDark2">#3a4b53</color>
     <color name="colorPrimaryDark">#26343b</color>
     <color name="colorAccent">#ff7e40</color>
+    <color name="colorActivityHeaderText">#fac552</color>
+
 
     <color name="colorTextWhite">#fffffe</color>
 
@@ -17,8 +19,8 @@
     <color name="colorSwitchTrack">#ffc952</color>
 
 
-    <color name="colorSquareMarkLight">#b13c37</color>
-    <color name="colorSquareMarkDark">#d75650</color>
+    <color name="colorSquareMarkOuter">#ff33b5e5</color>
+    <color name="colorSquareMarkInner">#3a4b53</color>
 
     <color name="colorSquareInfoInner">#a6ff00</color>
     <color name="colorSquareInfoOuter">#558000</color>

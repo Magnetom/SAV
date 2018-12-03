@@ -9,6 +9,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
+import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.TextView;
 
@@ -29,6 +30,18 @@ public class VehicleSelectActivity extends AppCompatActivity {
         setContentView(R.layout.activity_vehicle_select);
 
         final Context context = this;
+
+        // Стрелка "НАЗАД"
+        ImageButton backButton = findViewById(R.id.backNarrowBtn);
+        if (backButton != null){
+            backButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    finish();
+                }
+            });
+        }
+
 
         final VehiclesViewer viewer = new VehiclesViewer(this, new VehicleSelectedCallback() {
             @Override
@@ -61,26 +74,26 @@ public class VehicleSelectActivity extends AppCompatActivity {
                             public void onClick(DialogInterface dialog, int which) {
                                 if (!vid.getText().toString().equals("")){
 
-                                    // Готовим данные для возврата их в родительскую активити.
-                                    Intent intent = new Intent();
                                     // Переводим госномер в верхний регистр.
                                     vid.setText(vid.getText().toString().toUpperCase());
 
                                     //////////////////////////////////////////////////////////////
                                     // РЕАЛИЗАЦИЯ СКРЫТЫХ СЕРВИСНЫХ ФУНКЦИ!
-                                    // Очистка локальной БД.
-                                    //if (vid.getText().toString().equals("М750АМ750")){
-                                    if (vid.getText().toString().equals("123456")){
-                                        // Стираем все отметки.
-                                        //viewer.clearTableMarks();
-                                        Boolean result = DbProcessor.getInstance(context).clearTableMarks();
-                                        // Стираем все госномера.
-                                        viewer.removeAllVehicles();
-                                        // Стираем текущее ТС.
-                                        LocalSettings.getInstance(context).saveText(LocalSettings.SP_VEHICLE, "");
-                                        return;
+                                    // Вызов активити настроек!
+                                    if (vid.getText().toString().equals("543821")){
+                                        // Открываем окно с настройками.
+                                        startActivityForResult(new Intent(context, LocalPrefActivity.class), 1);
+
+                                        // Закрываем текущее диалоговое окно.
+                                        dialog.cancel();
+                                        // Завершаем текущую активити.
+                                        finish();
+                                        //return;
                                     }
                                     //////////////////////////////////////////////////////////////
+
+                                    // Готовим данные для возврата их в родительскую активити.
+                                    Intent intent = new Intent();
 
                                     intent.putExtra("VEHICLE", vid.getText().toString());
                                     setResult(RESULT_OK, intent);

@@ -162,7 +162,8 @@ public final class DbProcessor implements LoaderManager.LoaderCallbacks<Cursor>{
             String current_vehicle = LocalSettings.getInstance(getContext()).getText(LocalSettings.SP_VEHICLE);
             if (current_vehicle != null && (!current_vehicle.equals("")) ) return db.getAllMarks(current_vehicle, timestampToStringYYYYMMDD(System.currentTimeMillis()));
             else
-                return db.getAllMarks();
+                //return db.getAllMarks();
+                return null;
         }
     }
 
