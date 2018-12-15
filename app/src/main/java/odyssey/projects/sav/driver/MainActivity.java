@@ -29,10 +29,12 @@ import static odyssey.projects.utils.DateTimeUtils.getDDMMYYYY;
 
 public class MainActivity extends AppCompatActivity {
 
+    // Сщстояние автомата в основном обработчике сообщений.
     public static final int MSG_GEN_MARKS_CNT    = 1;
     public static final int MSG_GEN_MARKS_ADDED  = 2;
-    public static final int MSG_ST_CHANGE_STATUS = 3;
 
+    // Состояния автомата в обработчике сообщений о статусе.
+    public static final int MSG_ST_CHANGE_STATUS = 1;
 
     // Кнопка, на которой отображается текущий выбранный госномер.
     private TextView vehicleFrameButton;
@@ -46,11 +48,11 @@ public class MainActivity extends AppCompatActivity {
     // Отображение общего количества пройденных кругов.
     private TextView marksTotal;
 
+    // Класс визуализации списков отметок.
     private MarksView marksView;
 
     // переключатель "ОТКЛ./АВТО"
     private SwitchCompat mainSwitch;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -321,6 +323,9 @@ public class MainActivity extends AppCompatActivity {
             LocalSettings.getInstance(this).saveText(LocalSettings.SP_VEHICLE, vehicle);
             // Останавливаем менеджер управления отметками.
             RemoteMarkManager.stop();
+
+            // Обновляем список отметок для текущего ТС.
+            marksView.doUpdate();
         }
         // Обновляем содержимое кнопки.
         updateCurrentVehicleFrame();

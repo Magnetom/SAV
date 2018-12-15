@@ -12,6 +12,7 @@ import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
 import android.util.SparseBooleanArray;
 import android.view.DragEvent;
+import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnDragListener;
@@ -78,7 +79,7 @@ public final class VehiclesViewer extends DbProc {
     @SuppressLint("ClickableViewAccessibility")
     @Override
     void setupListView() {
-        final ListView listView = (((AppCompatActivity) context).findViewById(R.id.vehiclesIdList));
+        ListView listView = (((AppCompatActivity) context).findViewById(R.id.vehiclesIdList));
         if (listView == null) return;
 
         // Настраиваем view для случая пустого списка.
@@ -95,11 +96,16 @@ public final class VehiclesViewer extends DbProc {
         listView.setLongClickable(true);
         listView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
 
+        listView.setHapticFeedbackEnabled(true);
+
         // Настраиваем слушателя выбора строки.
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                  TextView vehicle = (TextView)view.findViewById(R.id.vehicleItemView);
+
+                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+
+                TextView vehicle = (TextView)view.findViewById(R.id.vehicleItemView);
                 if (callback != null) callback.onSelected(vehicle.getText().toString());
             }
         });
