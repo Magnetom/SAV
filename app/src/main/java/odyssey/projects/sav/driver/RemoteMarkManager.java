@@ -1,13 +1,18 @@
 package odyssey.projects.sav.driver;
 
 import android.content.Context;
+import android.media.AudioManager;
+import android.media.SoundPool;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.os.Vibrator;
 import android.util.Log;
 
 import com.android.volley.NoConnectionError;
 import com.android.volley.RequestQueue;
+import com.android.volley.ServerError;
+import com.android.volley.TimeoutError;
 import com.android.volley.toolbox.Volley;
 
 import org.json.JSONArray;
@@ -28,6 +33,7 @@ public final class RemoteMarkManager {
     private static boolean isStopRequested = false;
 
     public static final int SECONDS_1   = 1000;          // Одна секунда в миллисекундах.
+    public static final int SECONDS_5   = 5*SECONDS_1;
     public static final int SECONDS_10  = 10*SECONDS_1;
     public static final int SECONDS_30  = 30*SECONDS_1;
 
@@ -57,6 +63,9 @@ public final class RemoteMarkManager {
     // Заблокирована ли возможность отмечаться на сервере. Это необходимо для обеспечения необходимой паузы
     // между последовательными отметками.
     private static boolean markBlocked = false;
+
+    private static boolean useVibro = true;
+    private static boolean useMusic = true;
 
     // Транспортное средство, отметки о котором передаются в настоящий момент.
     private static String Vehicle = null;
@@ -147,7 +156,10 @@ public final class RemoteMarkManager {
 
                          // Ок, сеть подключена.
                          // Теперь проверяем связь с сервером. Для начала - пингуем его.
-                         if (isReachableByPing(ServerAddress)){
+                         // ToDo: Выяснить, почему временами не корректно работает функция isReachableByPing ???
+                         // ToDo: То и дело возвращает FALSE в одних и тех же обстоятельствах (проявлялось на разных телефонах).
+                         // ToDo: Пришлось временно использовать функцию-заглушку - isReachableByPing_dummy.
+                         if (isReachableByPing_dummy(ServerAddress)){
 
                              Log.i(TAG, "Ok, server is reachable by ping.");
 
@@ -198,6 +210,12 @@ public final class RemoteMarkManager {
 
                                                  // Отчет о статусе.
                                                  sendStatusReport(StatusEnum.IDLE);
+
+                                                 // Делаем небольшую вибрацию в случае успешной отметки.
+                                                 if (useVibro) doVibro(context);
+                                                 // Проигрываем небольшой звуковой фрагмент в случае успешной отметки.
+                                                 if (useMusic) Noice.getInstance(null).playSound();//doMusic(context);
+
                                                  Log.i(TAG, "Mark done successfully. Timeout "+delay/MINUTES_1+" min. Changed status to {IDLE}.");
                                              } else {
                                                  // Отчет о статусе.
@@ -255,7 +273,7 @@ public final class RemoteMarkManager {
                                  public void onError(Object obj) {
 
                                      // Таймаут соединения с приложением сервера на порту 80. WiFi сеть активна. Сервер доступен.
-                                     if (obj instanceof NoConnectionError){
+                                     if ( (obj instanceof NoConnectionError) || (obj instanceof TimeoutError) ){
                                          // Удаляем из очереди все имеющиеся сообщения, если таковые имеются. Это деалется потому, что при создании запроса
                                          // библеотека Volley делает несколько попыток соединиться и этот callback может быть вызван несколько раз через
                                          // определенный таймаут. Чобы исклчить из очереди несколько MSG_MARK сообщений, очищем предыдущие имеющиеся в очереди.
@@ -263,10 +281,17 @@ public final class RemoteMarkManager {
 
                                          queueHandler.sendMessageDelayed(Message.obtain(msg_copy), SECONDS_10);
                                          sendStatusReport(StatusEnum.ACTIVATED);
+                                         DebugUtils.debugPrintError(context,"Web-сервер недоступен!", TAG);
                                          Log.i(TAG, "Warning: no activity on server port 80! Postpone 10 sec. Change status to: {ACTIVATED}");
                                          return;
                                      }
-
+                                     if (obj instanceof ServerError){
+                                         queueHandler.removeCallbacksAndMessages(null);
+                                         sendStatusReport(StatusEnum.STOPPED);
+                                         DebugUtils.debugPrintError(context,"На сервере возникли неполадки! Обратитесь к администратору.", TAG);
+                                         Log.i(TAG, "Warning: errors on the server was occurred! Change status to: {STOPPED}");
+                                         return;
+                                     }
                                      // Прочие ошибки соединения.
                                      DebugUtils.debugPrintVolleyError(context, obj, TAG);
                                      recoverAfterFail();
@@ -274,13 +299,13 @@ public final class RemoteMarkManager {
                              });
                          } else{ // Сервер не доступен!
                              // Проверим доступность сети через несколько секунд.
-                             queueHandler.sendMessageDelayed(Message.obtain(msg), SECONDS_30);
+                             queueHandler.sendMessageDelayed(Message.obtain(msg), SECONDS_10);
                              sendStatusReport(StatusEnum.ACTIVATED);
                              Log.i(TAG, "Warning: server is unreachable! Postpone 30 sec. Change status to: {ACTIVATED}");
                          }
                     } else { // Сеть WiFi не активна!
                          // Проверим доступность сети через несколько секунд.
-                         queueHandler.sendMessageDelayed(Message.obtain(msg), SECONDS_10);
+                         queueHandler.sendMessageDelayed(Message.obtain(msg), SECONDS_5);
                          sendStatusReport(StatusEnum.ACTIVATED);
                          Log.i(TAG, "Warning: WiFi network is not active! Postpone 10 sec. Change status to: {ACTIVATED}");
                      }
@@ -333,6 +358,8 @@ public final class RemoteMarkManager {
 
         clrStopRequest();
 
+        Noice.getInstance(context);
+
         // Обработчик сообщений о статусе в главной активити.
         statusHandler = h1;
         // Основной обработчик сообщений в главной панели.
@@ -359,6 +386,14 @@ public final class RemoteMarkManager {
     public static Boolean reRun(Context context){
         clrStopRequest();
 
+        // Проверяем флаг глобального разрешения/запрещения работы приложения
+        Boolean globEnable = settings.getBoolean(LocalSettings.SP_GLOBAL_ENABLE);
+        if (!globEnable){
+            DebugUtils.debugPrintError(context,"Пожалуйста, включите возможность использования программы.", TAG);
+            sendStatusReport(StatusEnum.STOPPED);
+            return false;
+        }
+
         // Гос. номер текущего транспортного средства берем из локальных настроек.
         Vehicle = settings.getText(LocalSettings.SP_VEHICLE);
 
@@ -378,6 +413,9 @@ public final class RemoteMarkManager {
             sendStatusReport(StatusEnum.STOPPED);
             return false;
         }
+
+        useVibro = settings.getBoolean(LocalSettings.SP_USE_VIBRO);
+        useMusic = settings.getBoolean(LocalSettings.SP_USE_MUSIC);
 
         // Удаляем из очереди все имеющиеся сообщения, если таковые имеются.
         queueHandler.removeCallbacksAndMessages(null);
@@ -407,4 +445,61 @@ public final class RemoteMarkManager {
         localDbProc.OnDestroy();
     }
 
+    // Делает непродолжительную фибрацию в качестве уведомления об успешной отметке.
+    private static void doVibro(Context context){
+
+        //                       V         V         V         V         V
+        long[] pattern = { 500, 800, 300, 800, 300, 300, 300, 300, 300, 1000 };
+
+        Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+        if (vibrator.hasVibrator()) {
+            vibrator.vibrate(pattern, -1); // -1 - без повторений.
+        }
+    }
+
+
+
+    private static class Noice{
+
+        private static SoundPool mSoundPool = null;
+        private static int mSoundId = 1;
+
+        private static float leftVolume  = 0;
+        private static float rightVolume = 0;
+
+        private static Noice instance = null;
+
+        Noice(Context context){
+            initSound(context);
+        }
+
+        public static Noice getInstance (Context context){
+            if (instance != null) return instance;
+            else return (instance = new Noice(context));
+        }
+
+        private void initSound(Context context){
+            mSoundPool = new SoundPool(1, AudioManager.STREAM_MUSIC, 100);
+            mSoundId = mSoundPool.load(context, R.raw.bossdeath, 1);
+
+            AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+            float curVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+            float maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+
+            leftVolume =  curVolume / maxVolume;
+            rightVolume = curVolume / maxVolume;
+        }
+
+        public void playSound(){
+            if (mSoundId > 0 && mSoundPool != null){
+                mSoundPool.play(
+                        mSoundId,     // идентификатор звука.
+                        leftVolume,   // громкость левого динамика.
+                        rightVolume,  // громкость правого динамика.
+                        1,    // приоритет.
+                        1,      // без повторов.
+                        1f);    // скорость воспроизведения.
+            }
+        }
+    }
 }

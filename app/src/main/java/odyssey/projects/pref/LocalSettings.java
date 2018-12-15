@@ -19,6 +19,9 @@ public class LocalSettings {
     public static final String SP_ALLOWED_WIFI_SSID = "pref_wifi_ssid";
     public static final String SP_NOT_FIRST_JOIN    = "not_first_join";
     public static final String SP_ALL_DB_REMOVE     = "all_db_remove";
+    public static final String SP_GLOBAL_ENABLE     = "global_enable";
+    public static final String SP_USE_VIBRO         = "use_vibro";
+    public static final String SP_USE_MUSIC         = "use_music";
 
     private static final String APP_DEFAULT_PREFERENCES = "AppSettings";
 
@@ -46,7 +49,10 @@ public class LocalSettings {
             saveBoolean(SP_NOT_FIRST_JOIN, true);
 
             // Применяем настройки по-умолчанию (при первом запуске програмы).
+            saveBoolean(SP_GLOBAL_ENABLE, false); // Глобальное разрешение работы приложение - ЗАПРЕЩЕНО.
             saveBoolean(SP_USE_SSID_FILTER, true); // Использовать SSID-фильтрацию.
+            saveBoolean(SP_USE_VIBRO, true); // Использовать виро-оповещение об успешной отметке.
+            saveBoolean(SP_USE_MUSIC, true); // Использовать аудио-оповещение об успешной отметке.
             saveText(SP_ALLOWED_WIFI_SSID, Settings.ALLOWED_WIFI_DEFAULT_SSID); // Одобренный SSID по-умолчанию.
             saveText(SP_SERVER_ADDRESS,    Settings.DB_SERVER_DEFAULT_ADDRESS); // Адрес/имя удаленного сервера.
         }

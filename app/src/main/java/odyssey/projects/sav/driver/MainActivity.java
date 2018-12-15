@@ -11,10 +11,12 @@ import android.content.Intent;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.os.Vibrator;
 import android.support.constraint.ConstraintLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.SwitchCompat;
+import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.widget.CompoundButton;
 import android.widget.TextView;
@@ -71,16 +73,6 @@ public class MainActivity extends AppCompatActivity {
         RemoteMarkManager.init(this, statusHandler, generalHandler);
     }
 
-    /*
-    Handler statusHandler = new Handler(new Handler.Callback() {
-        @Override
-        public boolean handleMessage(Message msg) {
-            //super.handleMessage(msg);
-            StatusMessagesHandler(msg);
-            return true;
-        }
-    });
-    */
     private Handler statusHandler;  // Обработчик сообщений о статусе текущей отметки на удаленном сервере.
     private Handler generalHandler; // Основной обработчик общих сообщений.
 
@@ -263,10 +255,12 @@ public class MainActivity extends AppCompatActivity {
         if (vehicleFrameButton != null){
             // Устанавливаем текущий госномер из локальных настроек.
             String currentVehicle = LocalSettings.getInstance(this).getText(LocalSettings.SP_VEHICLE);
+            vehicleFrameButton.setHapticFeedbackEnabled(true); // Поддержка обратной связи в виде вибрации от нажатия на элемент.
             vehicleFrameButton.setText((currentVehicle.equals("")?"------":currentVehicle));
             vehicleFrameButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+                    vehicleFrameButton.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
                     // Запускаем активити выбора госномера. Ждем от нее результата - госномер.
                     startActivityForResult(new Intent(context, VehicleSelectActivity.class), 1);
                 }
@@ -275,9 +269,11 @@ public class MainActivity extends AppCompatActivity {
 
         /* ПЕРЕКЛЮЧАТЕЛЬ "ОТКЛ./АВТО" */
         mainSwitch =  findViewById(R.id.switch1);
+        mainSwitch.setHapticFeedbackEnabled(true); // Поддержка обратной связи в виде вибрации от нажатия на элемент.
         mainSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                mainSwitch.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
                 if (!isChecked) {
                     // Останавливаем менеджер управления отметками.
                     RemoteMarkManager.stop();
@@ -287,6 +283,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+
 
         /* ЗАГОЛОВОК СПИСКА ОТМЕТОК - ТЕКУЩАЯ ДАТА */
         currDate = findViewById(R.id.currDateView);
@@ -331,5 +328,4 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         updateCurrentVehicleFrame();
     }
-
 }

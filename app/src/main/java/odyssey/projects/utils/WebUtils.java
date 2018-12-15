@@ -62,6 +62,10 @@ public class WebUtils {
         return con_valid;
     }
 
+    public static boolean isReachableByPing_dummy(String address) {
+        return true;
+    }
+
     /**
      * Checks if the current server address is reachable by ping command.
      * @param address

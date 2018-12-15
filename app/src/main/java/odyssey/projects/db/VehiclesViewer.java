@@ -90,29 +90,6 @@ public final class VehiclesViewer extends DbProc {
         listView.setLongClickable(true);
         listView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
 
-        /*
-        // Ручная настройка времени длительного клика.
-        listView.setOnTouchListener(new View.OnTouchListener() {
-            private long then;
-            private int  longClickDur= 1500;
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                    then = (long) System.currentTimeMillis();
-                } else if (event.getAction() == MotionEvent.ACTION_UP) {
-                    if ((System.currentTimeMillis() - then) > longClickDur) {
-                        // LONG CLICK
-                        return true;
-                    } else {
-                        // SHORT CLICK
-                        return false;
-                    }
-                }
-                return false;
-            }
-        });
-        */
-
         // Настраиваем слушателя выбора строки.
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override

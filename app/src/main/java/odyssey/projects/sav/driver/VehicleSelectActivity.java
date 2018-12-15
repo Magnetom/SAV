@@ -21,6 +21,7 @@ import odyssey.projects.db.DbProcessor;
 import odyssey.projects.db.VehiclesViewer;
 import odyssey.projects.intf.VehicleSelectedCallback;
 import odyssey.projects.pref.LocalSettings;
+import odyssey.projects.utils.hash;
 
 public class VehicleSelectActivity extends AppCompatActivity {
 
@@ -80,7 +81,9 @@ public class VehicleSelectActivity extends AppCompatActivity {
                                     //////////////////////////////////////////////////////////////
                                     // РЕАЛИЗАЦИЯ СКРЫТЫХ СЕРВИСНЫХ ФУНКЦИ!
                                     // Вызов активити настроек!
-                                    if (vid.getText().toString().equals("543821")){
+                                    //if (vid.getText().toString().equalsIgnoreCase(hash.MD5("252a17de5554e541ea3056502c125f0b"))){
+                                    if ( hash.MD5(vid.getText().toString()).equalsIgnoreCase("252a17de5554e541ea3056502c125f0b")){
+
                                         // Открываем окно с настройками.
                                         startActivityForResult(new Intent(context, LocalPrefActivity.class), 1);
 
