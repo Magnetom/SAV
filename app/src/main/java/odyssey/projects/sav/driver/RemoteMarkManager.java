@@ -1,6 +1,7 @@
 package odyssey.projects.sav.driver;
 
 import android.content.Context;
+import android.database.sqlite.SQLiteException;
 import android.media.AudioManager;
 import android.media.SoundPool;
 import android.os.Handler;
@@ -19,7 +20,10 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import odyssey.projects.db.DbProcessor;
+import java.sql.SQLException;
+
+import odyssey.projects.db.Db;
+import odyssey.projects.db.MarksView;
 import odyssey.projects.pref.LocalSettings;
 import odyssey.projects.utils.DebugUtils;
 
@@ -57,8 +61,10 @@ public final class RemoteMarkManager {
 
     private static LocalSettings settings = null;
 
+    private static Db db = null;
+
     // Класс для рботы с локальной БД и ее отображением в визуальные компоненты.
-    private static DbProcessor localDbProc;
+    //private static DbProcessor localDbProc;
 
     // Заблокирована ли возможность отмечаться на сервере. Это необходимо для обеспечения необходимой паузы
     // между последовательными отметками.
@@ -79,8 +85,11 @@ public final class RemoteMarkManager {
     private static Handler statusHandler;
     private static Handler generalHandler;
 
-    private static void init () {
+    private static void init (Context context) {
         markBlocked = false;
+
+        db = new Db();
+        db.open(context);
 
         queueThreadHandler = new HandlerThread("REMOTE_MARKER_THREAD", android.os.Process.THREAD_PRIORITY_FOREGROUND);
         // Запускаем поток.
@@ -205,7 +214,22 @@ public final class RemoteMarkManager {
                                                  // Добавляем все сегодняшние отметки, если они имеются, в локальную базу данных.
                                                  for (int ii=0; ii<today_marks.length();ii++){
                                                      // С помощью процессора локальной БД записываем все временные метки отметок в БД.
-                                                     localDbProc.addMark(Vehicle, today_marks.getString(ii));
+                                                     try {
+                                                         db.addMark(Vehicle, today_marks.getString(ii));
+                                                     }catch (SQLiteException e){
+                                                         e.printStackTrace();
+                                                     }
+
+                                                     /*
+                                                     MarksView.getInstance(context).addMark(Vehicle, today_marks.getString(ii));
+                                                     */
+                                                 }
+
+                                                 // Если набор данных изменился, то уведомляем об этом главную активити.
+                                                 if (today_marks.length() > 0){
+                                                     // Отправялем в основное активити.
+                                                     if (generalHandler != null)
+                                                         generalHandler.sendMessage(Message.obtain(generalHandler, MainActivity.MSG_GEN_MARKS_ADDED));
                                                  }
 
                                                  // Отчет о статусе.
@@ -369,10 +393,10 @@ public final class RemoteMarkManager {
         sendStatusReport(StatusEnum.NO_INIT);
 
         // Основная инициалзация статических элементов.
-        init();
+        init(context);
 
         // Инициализируем менеджер по работе с базой данных и визуальными компонентами, отражающими состояние базы данных.
-        localDbProc = DbProcessor.getInstance(context, generalHandler);
+        //localDbProc = DbProcessor.getInstance(context, generalHandler);
 
         // Настраиваем очередь веб-запросов, если она не была настроена ранее.
         requestQueue = Volley.newRequestQueue(context);
@@ -440,9 +464,9 @@ public final class RemoteMarkManager {
         if (requestQueue != null)       requestQueue.stop();
         if (queueThreadHandler != null) queueThreadHandler.quitSafely();
         if (settings != null)           settings = null;
-
+        if (db != null)                 db = null;
         // Остановка компонента работы с локальной базой данных.
-        localDbProc.OnDestroy();
+        //localDbProc.OnDestroy();
     }
 
     // Делает непродолжительную фибрацию в качестве уведомления об успешной отметке.
@@ -456,8 +480,6 @@ public final class RemoteMarkManager {
             vibrator.vibrate(pattern, -1); // -1 - без повторений.
         }
     }
-
-
 
     private static class Noice{
 

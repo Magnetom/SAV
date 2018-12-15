@@ -11,7 +11,6 @@ import android.content.Intent;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
-import android.os.Vibrator;
 import android.support.constraint.ConstraintLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -21,7 +20,8 @@ import android.view.View;
 import android.widget.CompoundButton;
 import android.widget.TextView;
 
-import odyssey.projects.db.DbProcessor;
+import odyssey.projects.db.MarksView;
+import odyssey.projects.db.VehiclesViewer;
 import odyssey.projects.pref.LocalSettings;
 import pl.droidsonroids.gif.GifImageView;
 
@@ -30,7 +30,8 @@ import static odyssey.projects.utils.DateTimeUtils.getDDMMYYYY;
 public class MainActivity extends AppCompatActivity {
 
     public static final int MSG_GEN_MARKS_CNT    = 1;
-    public static final int MSG_ST_CHANGE_STATUS = 2;
+    public static final int MSG_GEN_MARKS_ADDED  = 2;
+    public static final int MSG_ST_CHANGE_STATUS = 3;
 
 
     // Кнопка, на которой отображается текущий выбранный госномер.
@@ -45,8 +46,10 @@ public class MainActivity extends AppCompatActivity {
     // Отображение общего количества пройденных кругов.
     private TextView marksTotal;
 
+    private MarksView marksView;
+
     // переключатель "ОТКЛ./АВТО"
-    SwitchCompat mainSwitch;
+    private SwitchCompat mainSwitch;
 
 
     @Override
@@ -69,6 +72,8 @@ public class MainActivity extends AppCompatActivity {
         MessagesHandlerInit();
         // Регистрируем обработчики событий от нажатия различных объектов View.
         setupOnClickListeners();
+        // Ициализируем класс для отображения списка отметок.
+        marksView = new MarksView(this, generalHandler);
         // Инициализация менеджера отметок.
         RemoteMarkManager.init(this, statusHandler, generalHandler);
     }
@@ -112,6 +117,11 @@ public class MainActivity extends AppCompatActivity {
                 // Количество пройденных кругов.
                 int marks_cnt = msg.arg1;
                 setMarksTotalFromForeignThread(marks_cnt);
+                break;
+            //-----------------------------------------------------
+            // Сообщение от RemoteMarkManager - набор данных в локальной БД изменился (а именно - количество отметок).
+            case MSG_GEN_MARKS_ADDED:
+                marksView.doUpdate();
                 break;
             //-----------------------------------------------------
             default:break;
@@ -284,7 +294,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-
         /* ЗАГОЛОВОК СПИСКА ОТМЕТОК - ТЕКУЩАЯ ДАТА */
         currDate = findViewById(R.id.currDateView);
         currDate.setText(getDDMMYYYY(System.currentTimeMillis()));
@@ -310,15 +319,9 @@ public class MainActivity extends AppCompatActivity {
         if (vehicle != null && !vehicle.equals("")){
             // Сохраняем выбанное ТС в локальные настройки.
             LocalSettings.getInstance(this).saveText(LocalSettings.SP_VEHICLE, vehicle);
-
-            // Параллельно сохраняем  номер ТС в локальную БД для ведения статистики и формирования списка всех ТС,
-            // используемых данным приложением.
-            Boolean result = DbProcessor.getInstance(this).insertVehicle(vehicle);
-
             // Останавливаем менеджер управления отметками.
             RemoteMarkManager.stop();
         }
-
         // Обновляем содержимое кнопки.
         updateCurrentVehicleFrame();
     }

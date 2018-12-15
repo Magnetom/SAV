@@ -83,10 +83,15 @@ public abstract class DbProc implements LoaderManager.LoaderCallbacks<Cursor>{
         return initCursorLoader();
     }
 
+    /*
     @Override
     public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
         this.getAdapter().swapCursor(data);
     }
+    */
+    @Override
+    public abstract void onLoadFinished(Loader<Cursor> loader, Cursor data);
+
 
     @Override
     public void onLoaderReset(Loader<Cursor> loader) {

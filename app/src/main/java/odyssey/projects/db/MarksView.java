@@ -26,9 +26,22 @@ public class MarksView extends DbProc {
     private Handler generalHandler;
     private ListView listView;
 
-    MarksView(Context context) {super(context);}
-    MarksView(Context context, Handler h) {super(context);generalHandler = h;}
+    //private static MarksView instance = null;
 
+    private MarksView(Context context) {super(context);}
+    public MarksView(Context context, Handler h) {super(context);generalHandler = h;}
+
+    /*
+    public static MarksView getInstance(Context context){
+        if (instance == null) return instance = new MarksView(context);
+        return instance;
+    }
+
+    public static MarksView getInstance(Context context, Handler h){
+        if (instance == null) return instance = new MarksView(context, h);
+        return instance;
+    }
+    */
 
     @Override
     SimpleCursorAdapter getAdapter() {return adapter;}

@@ -2,13 +2,15 @@ package odyssey.projects.sav.driver;
 
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.sqlite.SQLiteException;
 import android.preference.PreferenceActivity;
 import android.os.Bundle;
 import android.support.v7.app.AlertDialog;
 
-import odyssey.projects.db.DbProcessor;
+import odyssey.projects.db.Db;
+import odyssey.projects.db.MarksView;
+import odyssey.projects.db.VehiclesViewer;
 import odyssey.projects.pref.LocalSettings;
 
 public class LocalPrefActivity extends PreferenceActivity implements SharedPreferences.OnSharedPreferenceChangeListener {
@@ -37,16 +39,45 @@ public class LocalPrefActivity extends PreferenceActivity implements SharedPrefe
                 recreate();
 
                 // Настраиваем диалоговое окно ввода госномера.
-                new AlertDialog.Builder(this)
+                new AlertDialog.Builder(context)
                         .setIcon(R.drawable.error_outline_red_48x48)
                         .setTitle("Удалить все данные?")
                         .setPositiveButton("Готово", new DialogInterface.OnClickListener(){
                             public void onClick(DialogInterface dialog, int which) {
 
                                 /* ДЕЛАЕМ ОЧИСТКУ БД И ЛОКАЛЬНЫХ НАСТРОЕК! */
-                                DbProcessor.getInstance(context).clearTableMarks();
-                                // Стираем все госномера.
-                                DbProcessor.getInstance(context).removeAllVehicles();
+                                boolean result = false;
+                                // Создается экземпляр класса для работы с БД.
+                                Db db = new Db();
+                                db.open(context);
+                                try {
+                                    // Стираем все отметки.
+                                    db.clearTableMarks();
+                                    // Стираем все госномера.
+                                    db.removeAllVehicles();
+                                    result = true;
+                                } catch (SQLiteException e){
+                                    e.printStackTrace();
+                                }
+
+                                // Формируем сообщение о результате очистки.
+                                final String mess = result?"Данные очищены.":"Ошибка очистки!";
+                                final int res = result?R.drawable.info_success_48:R.drawable.info_error_48;
+
+                                //////////////////////////////////////////////////////////////
+                                // Настраиваем диалоговое окно информирования об окончании очистки БД.
+                                new AlertDialog.Builder(context)
+                                        .setIcon(res)
+                                        .setTitle(mess)
+                                        .setPositiveButton("Ок", new DialogInterface.OnClickListener(){
+                                            public void onClick(DialogInterface dialog, int which) {
+                                                dialog.cancel();
+                                            }
+                                        })
+                                        .create()
+                                        .show();
+                                //////////////////////////////////////////////////////////////
+
                                 // Стираем текущее ТС.
                                 sharedPreferences.edit().putString(LocalSettings.SP_VEHICLE, "").apply();
                                 // Закрываем текущее диалоговое окно.

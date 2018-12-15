@@ -7,23 +7,17 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.AdapterView;
 import android.widget.ImageButton;
-import android.widget.ListView;
 import android.widget.TextView;
 
-import java.io.Serializable;
-import java.util.ArrayList;
-
-import odyssey.projects.adapter.VehiclesCursorAdapter;
-import odyssey.projects.db.DbProcessor;
+import odyssey.projects.db.Db;
 import odyssey.projects.db.VehiclesViewer;
 import odyssey.projects.intf.VehicleSelectedCallback;
-import odyssey.projects.pref.LocalSettings;
 import odyssey.projects.utils.hash;
 
 public class VehicleSelectActivity extends AppCompatActivity {
+
+    private VehiclesViewer vehiclesViewer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,13 +38,18 @@ public class VehicleSelectActivity extends AppCompatActivity {
         }
 
 
-        final VehiclesViewer viewer = new VehiclesViewer(this, new VehicleSelectedCallback() {
+        vehiclesViewer = new VehiclesViewer(this, new VehicleSelectedCallback() {
             @Override
             public void onSelected(String vehicle) {
+
                 // Готовим данные для возврата их в родительскую активити.
                 Intent intent = new Intent();
                 intent.putExtra("VEHICLE", vehicle);
                 setResult(RESULT_OK, intent);
+
+                // Параллельно сохраняем  номер ТС в локальную БД для ведения статистики и
+                // формирования списка всех ТС, используемых данным приложением.
+                vehiclesViewer.insertVehicle(vehicle);
 
                 // Завершаем текущую активити.
                 finish();

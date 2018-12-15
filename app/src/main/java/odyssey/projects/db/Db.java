@@ -78,7 +78,13 @@ public final class Db {
 
     // Закрыть подключение.
     public void close() {
-        if (mDBHelper!=null) mDBHelper.close();
+        if (mDBHelper!=null) {mDBHelper.close();mDBHelper=null;mDB=null;}
+    }
+
+    @Override
+    protected void finalize() throws Throwable {
+        super.finalize();
+        close();
     }
 
     // Вложенный класс по созданию и управлению БД.

@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.support.annotation.NonNull;
 import android.support.v4.content.CursorLoader;
+import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
 import android.util.SparseBooleanArray;
 import android.view.DragEvent;
@@ -30,7 +31,9 @@ public final class VehiclesViewer extends DbProc {
     private SimpleCursorAdapter adapter;
     private VehicleSelectedCallback callback;
 
-    public VehiclesViewer(Context context) {
+    //private static VehiclesViewer instance = null;
+
+    private VehiclesViewer(Context context) {
         super(context);
     }
     public VehiclesViewer(Context context, VehicleSelectedCallback callback) {
@@ -39,11 +42,13 @@ public final class VehiclesViewer extends DbProc {
     }
 
     /*
-    public static Boolean isInstantiated (){
-        return instance != null;
-    }
     public static VehiclesViewer getInstance(Context context){
         if (instance == null) return instance = new VehiclesViewer(context);
+        return instance;
+    }
+
+    public static VehiclesViewer getInstance(Context context, VehicleSelectedCallback callback){
+        if (instance == null) return instance = new VehiclesViewer(context, callback);
         return instance;
     }
     */
@@ -133,6 +138,11 @@ public final class VehiclesViewer extends DbProc {
     @Override
     CursorLoader initCursorLoader() {
         return new VehiclesCursorLoader(this.context,this.db);
+    }
+
+    @Override
+    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
+        this.getAdapter().swapCursor(data);
     }
 
     @Override
