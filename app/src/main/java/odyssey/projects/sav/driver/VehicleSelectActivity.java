@@ -12,7 +12,7 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 
 import odyssey.projects.db.VehiclesViewer;
-import odyssey.projects.intf.VehicleSelectedCallback;
+import odyssey.projects.callbacks.VehicleSelectedListener;
 import odyssey.projects.utils.Hash;
 
 public class VehicleSelectActivity extends AppCompatActivity {
@@ -39,7 +39,7 @@ public class VehicleSelectActivity extends AppCompatActivity {
         }
         backButton.setHapticFeedbackEnabled(true);
 
-        vehiclesViewer = new VehiclesViewer(this, new VehicleSelectedCallback() {
+        vehiclesViewer = new VehiclesViewer(this, new VehicleSelectedListener() {
             @Override
             public void onSelected(String vehicle) {
 

@@ -18,20 +18,20 @@ import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 
 import odyssey.projects.adapters.VehiclesCursorAdapterNew;
-import odyssey.projects.intf.VehicleSelectedCallback;
+import odyssey.projects.callbacks.VehicleSelectedListener;
 import odyssey.projects.sav.driver.R;
 
 public final class VehiclesViewer extends DbProc {
 
     private SimpleCursorAdapter adapter;
-    private VehicleSelectedCallback callback;
+    private VehicleSelectedListener callback;
 
     //private static VehiclesViewer instance = null;
 
     private VehiclesViewer(Context context) {
         super(context);
     }
-    public VehiclesViewer(Context context, VehicleSelectedCallback callback) {
+    public VehiclesViewer(Context context, VehicleSelectedListener callback) {
         super(context);
         this.callback = callback;
     }
@@ -42,7 +42,7 @@ public final class VehiclesViewer extends DbProc {
         return instance;
     }
 
-    public static VehiclesViewer getInstance(Context context, VehicleSelectedCallback callback){
+    public static VehiclesViewer getInstance(Context context, VehicleSelectedListener callback){
         if (instance == null) return instance = new VehiclesViewer(context, callback);
         return instance;
     }
