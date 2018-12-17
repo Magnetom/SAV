@@ -11,14 +11,9 @@ import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
-import android.widget.BaseAdapter;
-import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 
 import java.util.ArrayList;
-
-import odyssey.projects.adapter.MarksCursorAdapter;
-import odyssey.projects.sav.driver.R;
 
 public abstract class DbProc implements LoaderManager.LoaderCallbacks<Cursor>{
 
@@ -57,8 +52,7 @@ public abstract class DbProc implements LoaderManager.LoaderCallbacks<Cursor>{
     }
 
     private void setupDb(Context context){
-        this.db = new Db();
-        this.db.open(context);
+        this.db = new Db(context);
     }
 
     private void setupLoadManager(Context context){

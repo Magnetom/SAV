@@ -13,9 +13,9 @@ import android.view.ViewGroup;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 
-import odyssey.projects.adapter.MarksCursorAdapter;
+import odyssey.projects.adapters.MarksCursorAdapter;
+import odyssey.projects.callbacks.CallbacksProvider;
 import odyssey.projects.pref.LocalSettings;
-import odyssey.projects.sav.driver.MainActivity;
 import odyssey.projects.sav.driver.R;
 
 import static odyssey.projects.utils.DateTimeUtils.timestampToStringYYYYMMDD;
@@ -23,25 +23,9 @@ import static odyssey.projects.utils.DateTimeUtils.timestampToStringYYYYMMDD;
 public class MarksView extends DbProc {
 
     private MarksCursorAdapter adapter;
-    private Handler generalHandler;
     private ListView listView;
 
-    //private static MarksView instance = null;
-
-    private MarksView(Context context) {super(context);}
-    public MarksView(Context context, Handler h) {super(context);generalHandler = h;}
-
-    /*
-    public static MarksView getInstance(Context context){
-        if (instance == null) return instance = new MarksView(context);
-        return instance;
-    }
-
-    public static MarksView getInstance(Context context, Handler h){
-        if (instance == null) return instance = new MarksView(context, h);
-        return instance;
-    }
-    */
+    public MarksView(Context context) {super(context);}
 
     @Override
     SimpleCursorAdapter getAdapter() {return adapter;}
@@ -91,13 +75,10 @@ public class MarksView extends DbProc {
     @Override
     public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
         this.adapter.swapCursor(data);
-
         // Отправялем в основное активити информацию о количестве элементов в списе (количество пройденных кругов).
-        if (generalHandler != null)
-            generalHandler.sendMessage(
-                    Message.obtain(
-                            generalHandler, MainActivity.MSG_GEN_MARKS_CNT, listView.getAdapter().getCount(),0)
-            );
+        if(CallbacksProvider.getLoopsCountListener()!=null){
+            CallbacksProvider.getLoopsCountListener().LoopsUpdated(listView.getAdapter().getCount());
+        }
         // По окончанию обновления данных в ListView плавно перемещаемся в конец списка.
         if (listView != null) listView.smoothScrollToPosition(listView.getCount());
     }

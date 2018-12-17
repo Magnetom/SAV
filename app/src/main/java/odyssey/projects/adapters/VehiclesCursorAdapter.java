@@ -1,11 +1,9 @@
-package odyssey.projects.adapter;
+package odyssey.projects.adapters;
 
 import android.content.Context;
-import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewStub;
 import android.widget.BaseAdapter;
 import android.widget.TextView;
 

@@ -66,12 +66,12 @@ public final class Db {
     private SQLiteDatabase mDB;
 
     // Конструктор класса Db.
-    public Db() {
-        /*  */
+    public Db(final Context context) {
+        open(context);
     }
 
     // Открыть подключение к локальной БД.
-    public void open(final Context context) throws SQLiteException {
+    private void open(final Context context) throws SQLiteException {
         mDBHelper = new DBHelper(context, DB_NAME, null, DB_VERSION);
         mDB = mDBHelper.getWritableDatabase();
     }

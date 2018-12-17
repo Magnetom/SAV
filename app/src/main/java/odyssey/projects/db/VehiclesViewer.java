@@ -4,26 +4,20 @@ import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.Intent;
 import android.database.Cursor;
 import android.support.annotation.NonNull;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
-import android.util.SparseBooleanArray;
-import android.view.DragEvent;
 import android.view.HapticFeedbackConstants;
-import android.view.MotionEvent;
 import android.view.View;
-import android.view.View.OnDragListener;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 
-import odyssey.projects.adapter.MarksCursorAdapter;
-import odyssey.projects.adapter.VehiclesCursorAdapterNew;
+import odyssey.projects.adapters.VehiclesCursorAdapterNew;
 import odyssey.projects.intf.VehicleSelectedCallback;
 import odyssey.projects.sav.driver.R;
 

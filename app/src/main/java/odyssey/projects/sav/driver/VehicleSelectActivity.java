@@ -3,7 +3,6 @@ package odyssey.projects.sav.driver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.database.sqlite.SQLiteException;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -12,10 +11,9 @@ import android.view.View;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
-import odyssey.projects.db.Db;
 import odyssey.projects.db.VehiclesViewer;
 import odyssey.projects.intf.VehicleSelectedCallback;
-import odyssey.projects.utils.hash;
+import odyssey.projects.utils.Hash;
 
 public class VehicleSelectActivity extends AppCompatActivity {
 
@@ -85,8 +83,7 @@ public class VehicleSelectActivity extends AppCompatActivity {
                                         //////////////////////////////////////////////////////////////
                                         // РЕАЛИЗАЦИЯ СКРЫТЫХ СЕРВИСНЫХ ФУНКЦИ!
                                         // Вызов активити настроек!
-                                        //if (vid.getText().toString().equalsIgnoreCase(hash.MD5("252a17de5554e541ea3056502c125f0b"))){
-                                        if ( hash.MD5(vid.getText().toString()).equalsIgnoreCase("252a17de5554e541ea3056502c125f0b")){
+                                        if ( Hash.MD5(vid.getText().toString()).equalsIgnoreCase("252a17de5554e541ea3056502c125f0b")){
 
                                             // Открываем окно с настройками.
                                             startActivityForResult(new Intent(context, LocalPrefActivity.class), 1);
@@ -98,15 +95,11 @@ public class VehicleSelectActivity extends AppCompatActivity {
                                             //return;
                                         }
                                         //////////////////////////////////////////////////////////////
-
                                         // Сохраняем выбранное ТС в локальную базу данных
                                         vehiclesViewer.insertVehicle(vid.getText().toString());
 
                                         // Готовим данные для возврата их в родительскую активити.
-                                        Intent intent = new Intent();
-
-                                        intent.putExtra("VEHICLE", vid.getText().toString());
-                                        setResult(RESULT_OK, intent);
+                                        setResult(RESULT_OK, new Intent().putExtra("VEHICLE", vid.getText().toString()));
 
                                         // Закрываем текущее диалоговое окно.
                                         dialog.cancel();

@@ -1,6 +1,6 @@
 package odyssey.projects.utils;
 
-public class hash {
+public class Hash {
     public static String MD5(String md5) {
         try {
             java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");

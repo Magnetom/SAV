@@ -7,7 +7,7 @@ public class Settings {
     public static final String WORK_DIRECTORY            = "/";
 
     // Имя скрипта для отметки клиента.
-    static final String MARK_SCRIPT = "mark.php";
+    public static final String MARK_SCRIPT = "mark.php";
 
     // SSID адрес маршрутизатора по-умолчанию.
     public static final String ALLOWED_WIFI_DEFAULT_SSID = "C0:4A:00:DA:A2:82";
@@ -20,4 +20,6 @@ public class Settings {
     static final String GENERAL_ERROR    = "error";
     // Если сообщение от сервера: "успех".
     static final String GENERAL_SUCCESS  = "success";
+
+    public static final String ACTION_TYPE_CMD = "cmd";
 }

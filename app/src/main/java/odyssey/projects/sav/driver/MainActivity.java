@@ -20,18 +20,19 @@ import android.view.View;
 import android.widget.CompoundButton;
 import android.widget.TextView;
 
+import odyssey.projects.callbacks.CallbacksProvider;
+import odyssey.projects.callbacks.LoopsCountListener;
+import odyssey.projects.callbacks.MarkStatusListener;
+import odyssey.projects.callbacks.MarksDatasetListener;
 import odyssey.projects.db.MarksView;
-import odyssey.projects.db.VehiclesViewer;
 import odyssey.projects.pref.LocalSettings;
+import odyssey.projects.services.MarkOpService;
 import pl.droidsonroids.gif.GifImageView;
 
+import static odyssey.projects.sav.driver.Settings.ACTION_TYPE_CMD;
 import static odyssey.projects.utils.DateTimeUtils.getDDMMYYYY;
 
 public class MainActivity extends AppCompatActivity {
-
-    // Сщстояние автомата в основном обработчике сообщений.
-    public static final int MSG_GEN_MARKS_CNT    = 1;
-    public static final int MSG_GEN_MARKS_ADDED  = 2;
 
     // Состояния автомата в обработчике сообщений о статусе.
     public static final int MSG_ST_CHANGE_STATUS = 1;
@@ -65,7 +66,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        RemoteMarkManager.onDestroy();
     }
 
     // Основная инициализация.
@@ -75,13 +75,44 @@ public class MainActivity extends AppCompatActivity {
         // Регистрируем обработчики событий от нажатия различных объектов View.
         setupOnClickListeners();
         // Ициализируем класс для отображения списка отметок.
-        marksView = new MarksView(this, generalHandler);
-        // Инициализация менеджера отметок.
-        RemoteMarkManager.init(this, statusHandler, generalHandler);
+        marksView = new MarksView(this);
+        // Инициализируем слушателей
+        initListeners();
+        // Устанавливаем иконку статуса отметок по-умолчанию - пусто.
+        setStatusIconFromForeignThread(0);
+        // Делаем запрос статуса сервиса отметок т.к. сервис работаем независимо от приложения.
+        startService(new Intent(MainActivity.this, MarkOpService.class).putExtra(ACTION_TYPE_CMD, MarkOpService.CMD_GET_STATUS));
+    }
+
+    /* Регистрация слушателей. */
+    private void initListeners() {
+
+        // Регистрируем слушателя сообщений об изменениях в статусе отметок на удаленном сервере.
+        CallbacksProvider.registerMarkStatusListener(new MarkStatusListener() {
+            @Override
+            public void changed(MarkOpService.StatusEnum newStatus) {
+                statusHandler.sendMessage(Message.obtain(statusHandler, MainActivity.MSG_ST_CHANGE_STATUS, newStatus));
+            }
+        });
+
+        // Регистрируем слушателя сообщений об изменениях в наборе данных отметок локальной БД.
+        CallbacksProvider.registerMarkDatasetListener(new MarksDatasetListener() {
+            @Override
+            public void changed(boolean changed) {
+                marksView.doUpdate();
+            }
+        });
+
+        // Регистрируем слушателя сообщений об изменении количества пройденных кругов
+        CallbacksProvider.registerLoopsListener(new LoopsCountListener() {
+            @Override
+            public void LoopsUpdated(int loops) {
+                setMarksTotalFromForeignThread(loops);
+            }
+        });
     }
 
     private Handler statusHandler;  // Обработчик сообщений о статусе текущей отметки на удаленном сервере.
-    private Handler generalHandler; // Основной обработчик общих сообщений.
 
     private void MessagesHandlerInit() {
 
@@ -101,33 +132,6 @@ public class MainActivity extends AppCompatActivity {
         HandlerThread generalThreadHandler = new HandlerThread("GENERAL_THREAD_HANDLER", android.os.Process.THREAD_PRIORITY_FOREGROUND);
         // Запускаем поток.
         generalThreadHandler.start();
-        // Настраиваем обработчик сообщений.
-        generalHandler = new Handler(generalThreadHandler.getLooper()) {
-            @Override
-            public void handleMessage(Message msg) {
-                GeneralMessagesHandler(msg);
-            }
-        };
-    }
-
-    private void GeneralMessagesHandler(Message msg) {
-        switch (msg.what) {
-            //-----------------------------------------------------
-            // Сообщение об текущем количестве кругов. Приходит от обертки адаптера списка по
-            // окончанию прорисовки всех элементов списка.
-            case MSG_GEN_MARKS_CNT:
-                // Количество пройденных кругов.
-                int marks_cnt = msg.arg1;
-                setMarksTotalFromForeignThread(marks_cnt);
-                break;
-            //-----------------------------------------------------
-            // Сообщение от RemoteMarkManager - набор данных в локальной БД изменился (а именно - количество отметок).
-            case MSG_GEN_MARKS_ADDED:
-                marksView.doUpdate();
-                break;
-            //-----------------------------------------------------
-            default:break;
-        }
     }
 
     private void StatusMessagesHandler(Message msg) {
@@ -138,7 +142,7 @@ public class MainActivity extends AppCompatActivity {
             case MSG_ST_CHANGE_STATUS:
 
                 // Получаем статус системы отметок через входящее сообщение.
-                RemoteMarkManager.StatusEnum status = (RemoteMarkManager.StatusEnum)msg.obj;
+                MarkOpService.StatusEnum status = (MarkOpService.StatusEnum)msg.obj;
 
                 try {
                     // СТАТУСЫ МАРКЕРА
@@ -288,10 +292,10 @@ public class MainActivity extends AppCompatActivity {
                 mainSwitch.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
                 if (!isChecked) {
                     // Останавливаем менеджер управления отметками.
-                    RemoteMarkManager.stop();
+                    stopService(new Intent(MainActivity.this, MarkOpService.class));
                 } else {
                     // Запускаем менеджер управления отметками.
-                    RemoteMarkManager.reRun(context);
+                    startService(new Intent(MainActivity.this, MarkOpService.class).putExtra(ACTION_TYPE_CMD, MarkOpService.CMD_RUN_MARKS));
                 }
             }
         });
@@ -322,8 +326,7 @@ public class MainActivity extends AppCompatActivity {
             // Сохраняем выбанное ТС в локальные настройки.
             LocalSettings.getInstance(this).saveText(LocalSettings.SP_VEHICLE, vehicle);
             // Останавливаем менеджер управления отметками.
-            RemoteMarkManager.stop();
-
+            stopService(new Intent(MainActivity.this, MarkOpService.class));
             // Обновляем список отметок для текущего ТС.
             marksView.doUpdate();
         }

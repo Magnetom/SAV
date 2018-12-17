@@ -1,4 +1,4 @@
-package odyssey.projects.adapter;
+package odyssey.projects.adapters;
 
 import android.content.Context;
 import android.database.Cursor;

@@ -2,6 +2,7 @@ package odyssey.projects.sav.driver;
 
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.sqlite.SQLiteException;
 import android.preference.PreferenceActivity;
@@ -12,6 +13,7 @@ import odyssey.projects.db.Db;
 import odyssey.projects.db.MarksView;
 import odyssey.projects.db.VehiclesViewer;
 import odyssey.projects.pref.LocalSettings;
+import odyssey.projects.services.MarkOpService;
 
 public class LocalPrefActivity extends PreferenceActivity implements SharedPreferences.OnSharedPreferenceChangeListener {
 
@@ -25,7 +27,8 @@ public class LocalPrefActivity extends PreferenceActivity implements SharedPrefe
 
         final Context context = this;
 
-        RemoteMarkManager.setStopRequest();
+        // Останавливаем менеджер управления отметками.
+        stopService(new Intent(LocalPrefActivity.this, MarkOpService.class));
 
         if (key.equals(LocalSettings.SP_ALL_DB_REMOVE)) {
             //Preference connectionPref = findPreference(key);
@@ -48,8 +51,7 @@ public class LocalPrefActivity extends PreferenceActivity implements SharedPrefe
                                 /* ДЕЛАЕМ ОЧИСТКУ БД И ЛОКАЛЬНЫХ НАСТРОЕК! */
                                 boolean result = false;
                                 // Создается экземпляр класса для работы с БД.
-                                Db db = new Db();
-                                db.open(context);
+                                Db db = new Db(context);
                                 try {
                                     // Стираем все отметки.
                                     db.clearTableMarks();
