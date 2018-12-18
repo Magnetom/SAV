@@ -484,6 +484,7 @@ public final class MarkOpService extends Service {
     public void onDestroy() {
         super.onDestroy();
         //onServiceDestroy();
+        stop();
     }
 
     public void stop(){

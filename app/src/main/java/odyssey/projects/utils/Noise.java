@@ -28,11 +28,16 @@ public final class Noise {
 
         AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
 
+        /*
         float curVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
         float maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
 
         float leftVolume = curVolume / maxVolume;
         float rightVolume = curVolume / maxVolume;
+        */
+
+        float leftVolume  = 1; // максимальная громкость.
+        float rightVolume = 1;
 
         if (mSoundId > 0 && mSoundPool != null){
             mSoundPool.play(

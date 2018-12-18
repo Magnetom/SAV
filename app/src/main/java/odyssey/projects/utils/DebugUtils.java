@@ -22,7 +22,7 @@ public class DebugUtils {
         if (tag == null) tag = TAG;
 
         if (error != null) Log.e(tag, error);
-        if (context != null) Toast.makeText(context, "Ошибка!\r\n"+error, Toast.LENGTH_LONG).show();
+        if (context != null && error != null) Toast.makeText(context, "Ошибка!\r\n"+error, Toast.LENGTH_LONG).show();
     }
 
     public static void debugPrintException(Context context, Exception e, String tag){
