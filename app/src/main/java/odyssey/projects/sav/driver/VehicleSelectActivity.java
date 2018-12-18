@@ -3,16 +3,18 @@ package odyssey.projects.sav.driver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.os.Bundle;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
+import android.text.method.PasswordTransformationMethod;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
-import odyssey.projects.db.VehiclesViewer;
 import odyssey.projects.callbacks.VehicleSelectedListener;
+import odyssey.projects.db.VehiclesViewer;
 import odyssey.projects.utils.Hash;
 
 public class VehicleSelectActivity extends AppCompatActivity {
@@ -80,21 +82,6 @@ public class VehicleSelectActivity extends AppCompatActivity {
                                         // Переводим госномер в верхний регистр.
                                         vid.setText(vid.getText().toString().toUpperCase());
 
-                                        //////////////////////////////////////////////////////////////
-                                        // РЕАЛИЗАЦИЯ СКРЫТЫХ СЕРВИСНЫХ ФУНКЦИ!
-                                        // Вызов активити настроек!
-                                        if ( Hash.MD5(vid.getText().toString()).equalsIgnoreCase("252a17de5554e541ea3056502c125f0b")){
-
-                                            // Открываем окно с настройками.
-                                            startActivityForResult(new Intent(context, LocalPrefActivity.class), 1);
-
-                                            // Закрываем текущее диалоговое окно.
-                                            dialog.cancel();
-                                            // Завершаем текущую активити.
-                                            finish();
-                                            //return;
-                                        }
-                                        //////////////////////////////////////////////////////////////
                                         // Сохраняем выбранное ТС в локальную базу данных
                                         vehiclesViewer.insertVehicle(vid.getText().toString());
 
@@ -105,9 +92,55 @@ public class VehicleSelectActivity extends AppCompatActivity {
                                         dialog.cancel();
                                         // Завершаем текущую активити.
                                         finish();
+                                    } else{
+                                        // Если введен пустой номер, то запускаем диалоговое окно для ввода
+                                        // пароля для запуска инженерного меню.
+
+                                        final EditText input = new EditText(context);
+                                        input.setTransformationMethod(PasswordTransformationMethod.getInstance());
+                                        /*
+                                        ConstraintLayout layout = new ConstraintLayout(context);
+                                        layout.addView(input);
+                                        ConstraintLayout.LayoutParams params = new ConstraintLayout.LayoutParams(ConstraintLayout.LayoutParams.MATCH_PARENT, ConstraintLayout.LayoutParams.MATCH_PARENT);
+                                        layout.setLayoutParams(params);
+                                        */
+                                        // Настраиваем диалог для ввода пароля.
+                                        new AlertDialog.Builder(context)
+                                                .setView(input)
+                                                .setTitle("Инженерное меню")
+                                                .setMessage("Введите пароль доступа")
+                                                .setPositiveButton("Готово", new DialogInterface.OnClickListener() {
+                                                        @Override
+                                                        public void onClick(DialogInterface dialog, int which) {
+                                                            //////////////////////////////////////////////////////////////
+                                                            // РЕАЛИЗАЦИЯ СКРЫТЫХ СЕРВИСНЫХ ФУНКЦИ!
+                                                            // Вызов активити настроек!
+                                                            if ( Hash.MD5(input.getText().toString()).equalsIgnoreCase("252a17de5554e541ea3056502c125f0b")){
+
+                                                                // Открываем окно с настройками.
+                                                                startActivityForResult(new Intent(context, LocalPrefActivity.class), 1);
+
+                                                                // Закрываем текущее диалоговое окно.
+                                                                dialog.cancel();
+                                                                // Завершаем текущую активити.
+                                                                //finish();
+                                                                return;
+                                                            }
+                                                            //////////////////////////////////////////////////////////////
+                                                        }
+                                                })
+                                                .setNegativeButton("Отмена", new DialogInterface.OnClickListener() {
+                                                        @Override
+                                                        public void onClick(DialogInterface dialog, int which) {
+                                                            dialog.cancel();
+                                                        }
+                                                })
+                                                .create()
+                                                .show();
                                     }
                                 }
                             })
+
                             .setNegativeButton("Отмена", new DialogInterface.OnClickListener() {
                                 @Override
                                 public void onClick(DialogInterface dialog, int which) {

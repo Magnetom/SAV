@@ -95,7 +95,7 @@ public final class MarkOpService extends Service {
         markBlocked = false;
         Status = StatusEnum.NO_INIT;
 
-        queueThreadHandler = new HandlerThread("REMOTE_MARKER_SERVICE_THREAD", android.os.Process.THREAD_PRIORITY_FOREGROUND);
+        queueThreadHandler = new HandlerThread("REMOTE_MARKER_SERVICE_THREAD", android.os.Process.THREAD_PRIORITY_BACKGROUND);
         // Запускаем поток.
         queueThreadHandler.start();
         // Настраиваем обработчик сообщений.
@@ -483,7 +483,7 @@ public final class MarkOpService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        onServiceDestroy();
+        //onServiceDestroy();
     }
 
     public void stop(){
