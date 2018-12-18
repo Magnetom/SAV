@@ -9,6 +9,7 @@ import android.preference.PreferenceActivity;
 import android.os.Bundle;
 import android.support.v7.app.AlertDialog;
 
+import odyssey.projects.callbacks.CallbacksProvider;
 import odyssey.projects.db.Db;
 import odyssey.projects.pref.LocalSettings;
 import odyssey.projects.services.MarkOpService;
@@ -58,6 +59,14 @@ public class LocalPrefActivity extends PreferenceActivity implements SharedPrefe
                                     result = true;
                                 } catch (SQLiteException e){
                                     e.printStackTrace();
+                                }
+
+                                if (CallbacksProvider.getMarksDatasetCallback() != null){
+                                    CallbacksProvider.getMarksDatasetCallback().changed(true);
+                                }
+
+                                if (CallbacksProvider.getLoopsCountListener() != null){
+                                    CallbacksProvider.getLoopsCountListener().LoopsUpdated(0);
                                 }
 
                                 // Формируем сообщение о результате очистки.

@@ -19,10 +19,37 @@ public final class UserSettingsPreferenceFragment extends PreferenceFragmentComp
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-
-        //ListView lv = (ListView) view.findViewById(android.R.id.list);
-        //ViewGroup parent = (ViewGroup)lv.getParent();
-        //parent.setPadding(0, 0, 0, 0);
-        //view.setPadding(0,0,0,0);
     }
+
+    /*
+    @Override
+    protected RecyclerView.Adapter onCreateAdapter(PreferenceScreen preferenceScreen) {
+        return new CustomPreferenceGroupAdapter(preferenceScreen);
+    }
+
+    static class CustomPreferenceGroupAdapter extends PreferenceGroupAdapter {
+
+        @SuppressLint("RestrictedApi")
+        public CustomPreferenceGroupAdapter(PreferenceGroup preferenceGroup) {
+            super(preferenceGroup);
+        }
+
+        @SuppressLint("RestrictedApi")
+        @Override
+        public void onBindViewHolder(PreferenceViewHolder holder, int position) {
+            super.onBindViewHolder(holder, position);
+            Preference currentPreference = getItem(position);
+            //For a preference category we want the divider shown above.
+            if (position != 0 && currentPreference instanceof PreferenceCategory) {
+                holder.setDividerAllowedAbove(true);
+                holder.setDividerAllowedBelow(false);
+            } else {
+                //For other dividers we do not want to show divider above
+                //but allow dividers below for CategoryPreference dividers.
+                holder.setDividerAllowedAbove(false);
+                holder.setDividerAllowedBelow(true);
+            }
+        }
+    }
+    */
 }

@@ -6,6 +6,10 @@
             android:key="use_vibro"
             android:title="Разрешить вибро"
             android:summary="Разрешает/запрещает вибро-оповещение после каждой успешной отметки." />
+        <Preference
+            android:title="divider"
+            android:selectable="false"
+            android:layout="@layout/preference_divider"/>
         <CheckBoxPreference
             android:key="use_music"
             android:title="Разрешить аудио"

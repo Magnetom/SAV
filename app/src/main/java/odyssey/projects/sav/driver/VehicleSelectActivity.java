@@ -4,11 +4,13 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.constraint.ConstraintLayout;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.text.method.PasswordTransformationMethod;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.TextView;
@@ -98,15 +100,17 @@ public class VehicleSelectActivity extends AppCompatActivity {
 
                                         final EditText input = new EditText(context);
                                         input.setTransformationMethod(PasswordTransformationMethod.getInstance());
-                                        /*
+                                        input.setLayoutParams(new ViewGroup.LayoutParams(ConstraintLayout.LayoutParams.MATCH_PARENT, ConstraintLayout.LayoutParams.MATCH_PARENT));
+
                                         ConstraintLayout layout = new ConstraintLayout(context);
-                                        layout.addView(input);
                                         ConstraintLayout.LayoutParams params = new ConstraintLayout.LayoutParams(ConstraintLayout.LayoutParams.MATCH_PARENT, ConstraintLayout.LayoutParams.MATCH_PARENT);
                                         layout.setLayoutParams(params);
-                                        */
+                                        layout.setPadding(40,0,40,0);
+
+                                        layout.addView(input);
                                         // Настраиваем диалог для ввода пароля.
                                         new AlertDialog.Builder(context)
-                                                .setView(input)
+                                                .setView(layout)
                                                 .setTitle("Инженерное меню")
                                                 .setMessage("Введите пароль доступа")
                                                 .setPositiveButton("Готово", new DialogInterface.OnClickListener() {

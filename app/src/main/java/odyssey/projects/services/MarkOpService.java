@@ -249,11 +249,10 @@ public final class MarkOpService extends Service {
                                                 boolean useMusic = settings.getBoolean(LocalSettings.SP_USE_MUSIC);
                                                 // Проигрываем мелодию и/или делаем вибро, если необходимо.
                                                 if (useMusic || useVibro){
-                                                    Noise noise = new Noise(context);
-                                                    // Делаем небольшую вибрацию в случае успешной отметки.
-                                                    if (useVibro) noise.doVibro();
                                                     // Проигрываем небольшой звуковой фрагмент в случае успешной отметки.
-                                                    if (useMusic) noise.playSound();
+                                                    if (useMusic) Noise.playSound(context);
+                                                    // Делаем небольшую вибрацию в случае успешной отметки.
+                                                    if (useVibro) Noise.doVibro(context);
                                                 }
 
                                                 Log.i(TAG, "Mark done successfully. Timeout "+delay/MINUTES_1+" min. Changed status to {IDLE}.");

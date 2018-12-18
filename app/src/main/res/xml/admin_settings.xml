@@ -6,14 +6,6 @@
             android:key="global_enable"
             android:title="Разрешить работу"
             android:summary="Разрешает/запрещает работу приложения." />
-        <CheckBoxPreference
-            android:key="use_vibro"
-            android:title="Разрешить вибро"
-            android:summary="Разрешает/запрещает вибро-оповещение после каждой успешной отметки." />
-        <CheckBoxPreference
-            android:key="use_music"
-            android:title="Разрешить аудио"
-            android:summary="Разрешает/запрещает аудио-оповещение после каждой успешной отметки." />
     </PreferenceCategory>
     <PreferenceCategory
         android:title="Управление базой данных">
