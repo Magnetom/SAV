@@ -10,8 +10,6 @@ import android.os.Bundle;
 import android.support.v7.app.AlertDialog;
 
 import odyssey.projects.db.Db;
-import odyssey.projects.db.MarksView;
-import odyssey.projects.db.VehiclesViewer;
 import odyssey.projects.pref.LocalSettings;
 import odyssey.projects.services.MarkOpService;
 
@@ -20,7 +18,7 @@ public class LocalPrefActivity extends PreferenceActivity implements SharedPrefe
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        addPreferencesFromResource(R.xml.settings);
+        addPreferencesFromResource(R.xml.admin_settings);
     }
 
     public void onSharedPreferenceChanged(final SharedPreferences sharedPreferences, String key) {

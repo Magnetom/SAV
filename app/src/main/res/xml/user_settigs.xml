@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory
+        android:title="Общие настройки">
+        <CheckBoxPreference
+            android:key="use_vibro"
+            android:title="Разрешить вибро"
+            android:summary="Разрешает/запрещает вибро-оповещение после каждой успешной отметки." />
+        <CheckBoxPreference
+            android:key="use_music"
+            android:title="Разрешить аудио"
+            android:summary="Разрешает/запрещает аудио-оповещение после каждой успешной отметки." />
+    </PreferenceCategory>
+</PreferenceScreen>

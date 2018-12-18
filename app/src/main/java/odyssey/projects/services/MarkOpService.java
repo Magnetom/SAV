@@ -66,14 +66,9 @@ public final class MarkOpService extends Service {
 
     private LocalSettings settings;
 
-    private Db db;
-
     // Заблокирована ли возможность отмечаться на сервере. Это необходимо для обеспечения необходимой паузы
     // между последовательными отметками.
     private boolean markBlocked;
-
-    private boolean useVibro;
-    private boolean useMusic;
 
     private boolean useSSIDFilter;
 
@@ -99,9 +94,6 @@ public final class MarkOpService extends Service {
         // Инициализация глобальных переменных.
         markBlocked = false;
         Status = StatusEnum.NO_INIT;
-
-        // Создается экземпляр класса для работы с БД.
-        db = new Db(context);
 
         queueThreadHandler = new HandlerThread("REMOTE_MARKER_SERVICE_THREAD", android.os.Process.THREAD_PRIORITY_FOREGROUND);
         // Запускаем поток.
@@ -237,6 +229,8 @@ public final class MarkOpService extends Service {
 
                                                 // Добавляем все сегодняшние отметки, если они имеются, в локальную базу данных.
                                                 for (int ii=0; ii<today_marks.length();ii++){
+                                                    // Создается экземпляр класса для работы с БД.
+                                                    Db db = new Db(context);
                                                     // С помощью процессора локальной БД записываем все временные метки отметок в БД.
                                                     try {
                                                         db.addMark(Vehicle, today_marks.getString(ii));
@@ -251,6 +245,8 @@ public final class MarkOpService extends Service {
                                                 // Отчет о статусе.
                                                 sendStatusReport(StatusEnum.IDLE);
 
+                                                boolean useVibro = settings.getBoolean(LocalSettings.SP_USE_VIBRO);
+                                                boolean useMusic = settings.getBoolean(LocalSettings.SP_USE_MUSIC);
                                                 // Проигрываем мелодию и/или делаем вибро, если необходимо.
                                                 if (useMusic || useVibro){
                                                     Noise noise = new Noise(context);
@@ -438,9 +434,6 @@ public final class MarkOpService extends Service {
             return false;
         }
 
-        useVibro = settings.getBoolean(LocalSettings.SP_USE_VIBRO);
-        useMusic = settings.getBoolean(LocalSettings.SP_USE_MUSIC);
-
         // Удаляем из очереди все имеющиеся сообщения, если таковые имеются.
         queueHandler.removeCallbacksAndMessages(null);
 
@@ -503,6 +496,5 @@ public final class MarkOpService extends Service {
         if (requestQueue != null)       requestQueue.stop();
         if (queueThreadHandler != null) queueThreadHandler.quitSafely();
         if (settings != null)           settings = null;
-        if (db != null)                 db = null;
     }
 }
