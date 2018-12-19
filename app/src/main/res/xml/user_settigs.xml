@@ -6,13 +6,21 @@
             android:key="use_vibro"
             android:title="Разрешить вибро"
             android:summary="Разрешает/запрещает вибро-оповещение после каждой успешной отметки." />
+        <!--
         <Preference
             android:title="divider"
             android:selectable="false"
-            android:layout="@layout/preference_divider"/>
+            android:layout="@layout/preference_divider"/>-->
         <CheckBoxPreference
             android:key="use_music"
             android:title="Разрешить аудио"
             android:summary="Разрешает/запрещает аудио-оповещение после каждой успешной отметки." />
+    </PreferenceCategory>
+    <PreferenceCategory
+        android:title="Управление базой данных">
+    <CheckBoxPreference
+        android:key="all_db_remove"
+        android:title="Очистить ходки"
+        android:summary="Очистить все ходки за текущую дату." />
     </PreferenceCategory>
 </PreferenceScreen>

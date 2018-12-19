@@ -37,10 +37,10 @@ public class LocalPrefActivity extends PreferenceActivity implements SharedPrefe
 
                 // Сбрасываем значение обратно на FALSE, тем самым имитируя исполнение команды.
                 sharedPreferences.edit().putBoolean(key, false).apply();
-                // Перезагружаем текущую активити для актуализиции состояния чекбокса.
-                recreate();
+                // Перезагружаем окно настроек.
+                addPreferencesFromResource(R.xml.admin_settings);
 
-                // Настраиваем диалоговое окно ввода госномера.
+                // Настраиваем диалоговое окно очистки БД и локальных настроек.
                 new AlertDialog.Builder(context)
                         .setIcon(R.drawable.error_outline_red_48x48)
                         .setTitle("Удалить все данные?")

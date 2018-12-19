@@ -85,8 +85,8 @@ public final class MainFragment extends Fragment {
         initListeners();
         // Устанавливаем иконку статуса отметок по-умолчанию - пусто.
         setStatusIconFromForeignThread(0);
-        // Делаем запрос статуса сервиса отметок т.к. сервис работаем независимо от приложения.
-        getContext().startService(new Intent(getContext(), MarkOpService.class).putExtra(ACTION_TYPE_CMD, MarkOpService.CMD_GET_STATUS));
+        // Делаем запрос статуса сервиса отметок т.к. сервис работает независимо от приложения.
+        if (getContext()!=null)getContext().startService(new Intent(getContext(), MarkOpService.class).putExtra(ACTION_TYPE_CMD, MarkOpService.CMD_GET_STATUS));
     }
 
     /* Регистрация слушателей. */
@@ -96,7 +96,7 @@ public final class MainFragment extends Fragment {
         CallbacksProvider.registerMarkStatusListener(new MarkStatusListener() {
             @Override
             public void changed(MarkOpService.StatusEnum newStatus) {
-                statusHandler.sendMessage(Message.obtain(statusHandler, MainFragment.MSG_ST_CHANGE_STATUS, newStatus));
+                if (statusHandler!=null) statusHandler.sendMessage(Message.obtain(statusHandler, MainFragment.MSG_ST_CHANGE_STATUS, newStatus));
             }
         });
 
@@ -104,7 +104,7 @@ public final class MainFragment extends Fragment {
         CallbacksProvider.registerMarkDatasetListener(new MarksDatasetListener() {
             @Override
             public void changed(boolean changed) {
-                marksView.doUpdate();
+                if (marksView!=null) marksView.doUpdate();
             }
         });
 
@@ -125,18 +125,14 @@ public final class MainFragment extends Fragment {
         HandlerThread statusThreadHandler = new HandlerThread("STATUS_THREAD_HANDLER", android.os.Process.THREAD_PRIORITY_FOREGROUND);
         // Запускаем поток.
         statusThreadHandler.start();
-        // Настраиваем обработчик сообщений.
+
+        // Настраиваем обработчик сообщений о статусе сервиса отметок.
         statusHandler = new Handler(statusThreadHandler.getLooper()) {
             @Override
             public void handleMessage(Message msg) {
                 StatusMessagesHandler(msg);
             }
         };
-
-        /* Регистрируем обработчик для прочих сообщений */
-        HandlerThread generalThreadHandler = new HandlerThread("GENERAL_THREAD_HANDLER", android.os.Process.THREAD_PRIORITY_FOREGROUND);
-        // Запускаем поток.
-        generalThreadHandler.start();
     }
 
     private void StatusMessagesHandler(Message msg) {
@@ -223,6 +219,7 @@ public final class MainFragment extends Fragment {
 
     // Изменяет иконку статуса из потока, отличного от MainUI Thread.
     private void setStatusIconFromForeignThread(final int resId){
+        if (getActivity() != null)
         getActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -233,6 +230,7 @@ public final class MainFragment extends Fragment {
 
     // Изменяет переключатель ОТКЛ./АВТО из потока, отличного от MainUI Thread.
     private void setSwitchFromForeignThread(final boolean checked){
+        if (getActivity() != null)
         getActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -243,11 +241,12 @@ public final class MainFragment extends Fragment {
 
     // Изменяет общее значение пройденных кругов.
     private void setMarksTotalFromForeignThread(final int cnt){
+        if (getActivity() != null)
         getActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 String text = Integer.valueOf(cnt).toString();
-                marksTotal.setText(text);
+                if (marksView!=null) marksTotal.setText(text);
             }
         });
     }
@@ -315,7 +314,7 @@ public final class MainFragment extends Fragment {
     protected void updateCurrentVehicleFrame(){
         String vehicle = LocalSettings.getInstance(getContext()).getText(LocalSettings.SP_VEHICLE);
         // Обновляем содержимое кнопки.
-        vehicleFrameButton.setText( vehicle.equals("")?"--------":vehicle);
+        if (vehicleFrameButton!=null) vehicleFrameButton.setText( vehicle.equals("")?"--------":vehicle);
     }
 
     @Override
@@ -331,7 +330,7 @@ public final class MainFragment extends Fragment {
             // Останавливаем менеджер управления отметками.
             getActivity().stopService(new Intent(getContext(), MarkOpService.class));
             // Обновляем список отметок для текущего ТС.
-            marksView.doUpdate();
+            if (marksView!=null) marksView.doUpdate();
         }
         // Обновляем содержимое кнопки.
         updateCurrentVehicleFrame();
