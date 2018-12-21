@@ -106,8 +106,8 @@ public class VolleyWrapper {
         }
 
         arrayRequest.setRetryPolicy(new DefaultRetryPolicy(
-                DefaultRetryPolicy.DEFAULT_TIMEOUT_MS,
-                DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                4000/*DefaultRetryPolicy.DEFAULT_TIMEOUT_MS*/,
+                2/*DefaultRetryPolicy.DEFAULT_MAX_RETRIES*/,
                 DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
         // Adding the json request to the queue.
         requestQueue.add(arrayRequest.setShouldCache(false));

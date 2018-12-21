@@ -6,24 +6,42 @@ import android.widget.Toast;
 
 import com.android.volley.VolleyError;
 
+import odyssey.projects.pref.LocalSettings;
+
 public class DebugUtils {
 
     public static final String TAG = "DEBUG_UTILS";
 
     public static void debugPrintErrorStd1(Context context, String tag){
-        debugPrintError(context, "При обращении к серверу произошла ошибка! Обратитесь к системному администратору.", tag);
+        toastPrintError(context, "При обращении к серверу произошла ошибка! Обратитесь к системному администратору.", tag);
     }
 
     public static void debugPrintErrorStd2(Context context, String tag){
-        debugPrintError(context, "Объект не является экземпляров класса Context.", tag);
+        toastPrintError(context, "Объект не является экземпляров класса Context.", tag);
     }
 
-    public static void debugPrintError(Context context, String error, String tag){
+    public static void toastPrintInfo(Context context, String info, String tag){
+        if (LocalSettings.getInstance(context).getBoolean(LocalSettings.SP_USE_POPUP_INFO))
+        toastPrint(context, "Информация:", info, tag);
+    }
+
+    public static void toastPrintWarning(Context context, String warn, String tag){
+        if (LocalSettings.getInstance(context).getBoolean(LocalSettings.SP_USE_POPUP_WARN))
+        toastPrint(context, "Внимание!", warn, tag);
+    }
+
+    public static void toastPrintError(Context context, String error, String tag){
+        if (LocalSettings.getInstance(context).getBoolean(LocalSettings.SP_USE_POPUP_ERROR))
+        toastPrint(context, "Ошибка", error, tag);
+    }
+
+    public static void toastPrint(Context context, String category, String error, String tag){
         if (tag == null) tag = TAG;
 
         if (error != null) Log.e(tag, error);
-        if (context != null && error != null) Toast.makeText(context, "Ошибка!\r\n"+error, Toast.LENGTH_LONG).show();
+        if (context != null && error != null) Toast.makeText(context, category+"\r\n"+error, Toast.LENGTH_LONG).show();
     }
+
 
     public static void debugPrintException(Context context, Exception e, String tag){
         if (tag == null) tag = TAG;
@@ -41,7 +59,7 @@ public class DebugUtils {
 
             if (obj instanceof String) {
                 errorString = "onError string: " + obj;
-            }
+            } else
             if (obj instanceof VolleyError) {
                 errorString = "onError VolleyError: "+((VolleyError)obj).getMessage();
             } else {

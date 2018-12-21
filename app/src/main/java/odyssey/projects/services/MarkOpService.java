@@ -1,13 +1,18 @@
 package odyssey.projects.services;
 
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.database.sqlite.SQLiteException;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Message;
+import android.os.PowerManager;
 import android.util.Log;
 
 import com.android.volley.NoConnectionError;
@@ -20,7 +25,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import odyssey.projects.utils.Noise;
 import odyssey.projects.callbacks.CallbacksProvider;
 import odyssey.projects.callbacks.LongOpCallback;
 import odyssey.projects.db.Db;
@@ -28,6 +32,7 @@ import odyssey.projects.pref.LocalSettings;
 import odyssey.projects.sav.driver.Settings;
 import odyssey.projects.sav.driver.VolleyWrapper;
 import odyssey.projects.utils.DebugUtils;
+import odyssey.projects.utils.Noise;
 
 import static odyssey.projects.utils.WebUtils.getWifiBSSID;
 import static odyssey.projects.utils.WebUtils.isReachableByPing_dummy;
@@ -37,30 +42,44 @@ public final class MarkOpService extends Service {
 
     public static final String TAG = "MARK_SERVICE";
 
+    /* Опеределие секунд. */
     public static final int SECONDS_1   = 1000;          // Одна секунда в миллисекундах.
     public static final int SECONDS_5   = 5*SECONDS_1;
     public static final int SECONDS_10  = 10*SECONDS_1;
     public static final int SECONDS_30  = 30*SECONDS_1;
-
-
+    /* Опеределие минут. */
     public static final int MINUTES_1  = 60*SECONDS_1;  // Одна минута в миллисекундах.
     public static final int MINUTES_5  = 5*MINUTES_1;
     public static final int MINUTES_10 = 10*MINUTES_1;
 
+    /* Блок основных таймаутов сервиса отметок. */
+    // Таймаут в случае отсутствия активного WiFi соединения при попытке отметится.
+    private static final int TIMEOUT_WIFI_UNAVAILABLE   = SECONDS_30;
+    // Таймаут в случае отсутствия сервера в сети (сбой пинга ip-адреса сервера).
+    private static final int TIMEOUT_SERVER_UNREACHABLE = SECONDS_5;
+    // Таймаут в случае отсутствия ответа от сервера при Volley-запросе на порт 80 на сервере.
+    private static final int TIMEOUT_SERVER_80_TIMEOUT  = SECONDS_5;
+    // Таймаут в случае, если сервер коррктно вернул в ответе статус ошибки выполнения скрипта.
+    private static final int TIMEOUT_SERVER_OWN_FATAL   = MINUTES_10;
+
+    /* Блок установок времени */
+    // Продолжительность свечения экрана после удачной отметки.
+    private static final int DURATION_SCREEN_WAKE_UP = SECONDS_10;
+
+
+
     private static final int MSG_MARK    = 1;
     private static final int MSG_UNBLOCK = 2;
-
 
     public static final int CMD_GET_STATUS = 1;
     public static final int CMD_RUN_MARKS  = 2;
 
-    public static enum StatusEnum {
+    public enum StatusEnum {
         NO_INIT, IDLE, ACTIVATED, CONNECTING, CONNECTED, FAIL, POSTPONE, STOPPED, BLOCKED
     }
 
     private StatusEnum Status;
     private boolean isStopRequested;
-    private HandlerThread queueThreadHandler;
     private Handler queueHandler;
     private RequestQueue requestQueue;
 
@@ -81,6 +100,11 @@ public final class MarkOpService extends Service {
     // Адрес или доменное имя удаленного сервера.
     private String ServerAddress;
 
+    // Статус, который удаленный сервер присвоил текущей попытке клиента отметится.
+    private String srvResponseStatus;
+
+    private BroadcastReceiver receiver;
+
     /**
      * Called by the system when the service is first created.  Do not call this method directly.
      */
@@ -94,8 +118,9 @@ public final class MarkOpService extends Service {
         // Инициализация глобальных переменных.
         markBlocked = false;
         Status = StatusEnum.NO_INIT;
+        srvResponseStatus = "unknown";
 
-        queueThreadHandler = new HandlerThread("REMOTE_MARKER_SERVICE_THREAD", android.os.Process.THREAD_PRIORITY_BACKGROUND);
+        HandlerThread queueThreadHandler = new HandlerThread("REMOTE_MARKER_SERVICE_THREAD", android.os.Process.THREAD_PRIORITY_BACKGROUND);
         // Запускаем поток.
         queueThreadHandler.start();
         // Настраиваем обработчик сообщений.
@@ -113,6 +138,8 @@ public final class MarkOpService extends Service {
         requestQueue.getCache().clear();
 
         settings = LocalSettings.getInstance(context);
+
+        registerBroadcast();
 
         // Отсылаем отчет в главное активити.
         sendStatusReport(StatusEnum.NO_INIT);
@@ -204,9 +231,9 @@ public final class MarkOpService extends Service {
                                         JSONObject jsonObject = ((JSONObject) obj);
 
                                         // Получаем статус текущего запроса на сервер.
-                                        String status = jsonObject.getString("status");
+                                        String srvResponseStatus = jsonObject.getString("status");
 
-                                        Log.i(TAG, "Server response was received. Status: "+status);
+                                        Log.i(TAG, "Server response was received. Status: "+srvResponseStatus);
 
                                         // Получаем значение времени задержки перед следующей попыткой отметиться.
                                         int delay = 0;
@@ -220,10 +247,10 @@ public final class MarkOpService extends Service {
 
                                         // При запросе на сервер не произошло никакой ошибки. Также сервер не приостановил
                                         // отметку данного гос. номера.
-                                        if (!status.equals("error") && !status.equals("blocked")){
+                                        if (!srvResponseStatus.equals("error") && !srvResponseStatus.equals("blocked")){
 
                                             // Если запрос на отметку был отложен сервером, обновляем локальную базу данных.
-                                            if (!status.equals("postpone")){
+                                            if (!srvResponseStatus.equals("postpone")){
                                                 // Получаем список отметок за сегодня.
                                                 JSONArray today_marks  = jsonObject.getJSONArray("today_marks");
 
@@ -255,11 +282,15 @@ public final class MarkOpService extends Service {
                                                     if (useVibro) Noise.doVibro(context);
                                                 }
 
+                                                boolean useScreenWakeUp = settings.getBoolean(LocalSettings.SP_USE_SCREEN_WAKEUP);
+                                                if (useScreenWakeUp) screenWakeUp(context);
+
                                                 Log.i(TAG, "Mark done successfully. Timeout "+delay/MINUTES_1+" min. Changed status to {IDLE}.");
                                             } else {
                                                 // Отчет о статусе.
                                                 sendStatusReport(StatusEnum.POSTPONE);
                                                 Log.i(TAG, "Mark postponed (delay "+delay/MINUTES_1+" min). Changed status to {POSTPONE}.");
+                                                DebugUtils.toastPrintInfo(context,"Отметка невозможна еще "+delay/MINUTES_1+" мин.", TAG);
                                             }
 
                                             // Взводим курок заново ...
@@ -268,13 +299,15 @@ public final class MarkOpService extends Service {
                                         } else { // Ошибка на сервере или клиенту запрещено отмечаться (возможность отметок приостановлена).
 
                                             // Сервер вернул статус ошибки! Обрабатываем ее.
-                                            if (status.equals("error")){
+                                            if (srvResponseStatus.equals("error")){
 
                                                 //DebugUtils.debugPrintErrorStd1(context, TAG);
-                                                DebugUtils.debugPrintError(context, jsonObject.getString("details"), TAG);
+                                                DebugUtils.toastPrintError(context, jsonObject.getString("details"), TAG);
 
                                                 // Взводим курок заново ..., но ставим максимальный временной интервал на случай исправления ошибок на сервере.
-                                                queueHandler.sendMessageDelayed(Message.obtain(msg_copy), MINUTES_10);
+                                                queueHandler.sendMessageDelayed(Message.obtain(msg_copy), TIMEOUT_SERVER_OWN_FATAL);
+
+                                                DebugUtils.toastPrintError(context,"Сервер вернул статус ошибки!\r\nПауза "+TIMEOUT_SERVER_OWN_FATAL/SECONDS_1+" сек.", TAG);
 
                                                 // Последовательно информируем о дву статусах. Статус возникшей ошибки FAIl система визуализации
                                                 // задержит на некоторое время, а затем сменит на статус ACTIVATED.
@@ -288,13 +321,13 @@ public final class MarkOpService extends Service {
 
                                             // Сервер сообщил, что отметка данного гос. номера временно приостановлена.
                                             // Останавливаем попытки отметится.
-                                            if (status.equals("blocked")) {
+                                            if (srvResponseStatus.equals("blocked")) {
                                                 // Отчет о статусе.
                                                 sendStatusReport(StatusEnum.BLOCKED);
 
                                                 // Взводим курок заново ...
                                                 queueHandler.sendMessageDelayed(Message.obtain(msg_copy), delay);
-
+                                                DebugUtils.toastPrintWarning(context,"Возможность отметок заблокирована на "+delay/MINUTES_1+" мин.", TAG);
                                                 Log.i(TAG, "Warning: mark ability was disabled by the server! Status changed to: {ACTIVATED}");
                                                 return;
                                             }
@@ -304,6 +337,7 @@ public final class MarkOpService extends Service {
                                         recoverAfterFail();
                                         e.printStackTrace();
                                         DebugUtils.debugPrintException(context,e, TAG);
+                                        DebugUtils.toastPrintWarning(context,"Неизвестная ошибка на сервере! Служба отметок остановлена.\r\nПодробнее:\r\n"+e.getLocalizedMessage(), TAG);
                                     }
                                 }
 
@@ -317,35 +351,38 @@ public final class MarkOpService extends Service {
                                         // определенный таймаут. Чобы исклчить из очереди несколько MSG_MARK сообщений, очищем предыдущие имеющиеся в очереди.
                                         queueHandler.removeCallbacksAndMessages(null);
 
-                                        queueHandler.sendMessageDelayed(Message.obtain(msg_copy), SECONDS_10);
+                                        queueHandler.sendMessageDelayed(Message.obtain(msg_copy), TIMEOUT_SERVER_80_TIMEOUT);
                                         sendStatusReport(StatusEnum.ACTIVATED);
-                                        DebugUtils.debugPrintError(context,"Web-сервер недоступен!", TAG);
-                                        Log.i(TAG, "Warning: no activity on server port 80! Postpone 10 sec. Change status to: {ACTIVATED}");
+                                        DebugUtils.toastPrintWarning(context,"Сервер обнаружен, но http-служба недоступна на порту 80!\r\nПауза "+TIMEOUT_SERVER_80_TIMEOUT/SECONDS_1+" сек.", TAG);
+                                        Log.i(TAG, "Warning: no activity on server port 80! Postpone "+TIMEOUT_SERVER_80_TIMEOUT/SECONDS_1+" sec. Change status to: {ACTIVATED}");
                                         return;
                                     }
                                     if (obj instanceof ServerError){
                                         queueHandler.removeCallbacksAndMessages(null);
                                         sendStatusReport(StatusEnum.STOPPED);
-                                        DebugUtils.debugPrintError(context,"На сервере возникли неполадки! Обратитесь к администратору.", TAG);
+                                        DebugUtils.toastPrintError(context,"На сервере возникли неполадки! Обратитесь к администратору.", TAG);
                                         Log.i(TAG, "Warning: errors on the server was occurred! Change status to: {STOPPED}");
                                         return;
                                     }
                                     // Прочие ошибки соединения.
                                     DebugUtils.debugPrintVolleyError(context, obj, TAG);
+                                    DebugUtils.toastPrintError(context,"Неизвестная ошибка коммуникации с сервером! Отмена всех задач. Подробности:\r\n"+((obj!=null)?obj.toString():"unknown"), TAG);
                                     recoverAfterFail();
                                 }
                             });
                         } else{ // Сервер не доступен!
                             // Проверим доступность сети через несколько секунд.
-                            queueHandler.sendMessageDelayed(Message.obtain(msg), SECONDS_10);
+                            queueHandler.sendMessageDelayed(Message.obtain(msg), TIMEOUT_SERVER_UNREACHABLE);
                             sendStatusReport(StatusEnum.ACTIVATED);
-                            Log.i(TAG, "Warning: server is unreachable! Postpone 30 sec. Change status to: {ACTIVATED}");
+                            DebugUtils.toastPrintWarning(context,"Сервер в сети не обнаружен!\r\nПауза "+TIMEOUT_SERVER_UNREACHABLE/SECONDS_1+" сек.", TAG);
+                            Log.i(TAG, "Warning: server is unreachable! Postpone "+TIMEOUT_SERVER_UNREACHABLE/SECONDS_1+" sec. Change status to: {ACTIVATED}");
                         }
                     } else { // Сеть WiFi не активна!
                         // Проверим доступность сети через несколько секунд.
-                        queueHandler.sendMessageDelayed(Message.obtain(msg), SECONDS_5);
+                        queueHandler.sendMessageDelayed(Message.obtain(msg), TIMEOUT_WIFI_UNAVAILABLE);
                         sendStatusReport(StatusEnum.ACTIVATED);
-                        Log.i(TAG, "Warning: WiFi network is not active! Postpone 10 sec. Change status to: {ACTIVATED}");
+                        DebugUtils.toastPrintInfo(context,"Активная WiFi сеть не обнаружена.\r\nПауза "+TIMEOUT_WIFI_UNAVAILABLE/SECONDS_1+" сек.", TAG);
+                        Log.i(TAG, "Warning: WiFi network is not active! Postpone "+TIMEOUT_WIFI_UNAVAILABLE/SECONDS_1+" sec. Change status to: {ACTIVATED}");
                     }
                 }
                 break;
@@ -400,13 +437,28 @@ public final class MarkOpService extends Service {
         return false;
     }
 
+    // Зажечь экран на предустановленное время.
+    private void screenWakeUp(Context context){
+        PowerManager pm = (PowerManager)context.getSystemService(Context.POWER_SERVICE);
+        boolean isScreenOn = pm.isInteractive();
+        if(!isScreenOn)
+        {
+            PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.FULL_WAKE_LOCK |PowerManager.ACQUIRE_CAUSES_WAKEUP |PowerManager.ON_AFTER_RELEASE,"sav:service");
+            wl.acquire(DURATION_SCREEN_WAKE_UP);
+
+            PowerManager.WakeLock wl_cpu = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"sav:service_cpu");
+            wl_cpu.acquire(DURATION_SCREEN_WAKE_UP);
+        }
+    }
+
+    /* Запустить поток для автоматического выполнения отметок в бесконечном цикле. */
     public Boolean reRun(Context context){
         clrStopRequest();
 
         // Проверяем флаг глобального разрешения/запрещения работы приложения
         Boolean globEnable = settings.getBoolean(LocalSettings.SP_GLOBAL_ENABLE);
         if (!globEnable){
-            DebugUtils.debugPrintError(context,"Пожалуйста, включите возможность использования программы.", TAG);
+            DebugUtils.toastPrintError(context,"Пожалуйста, включите возможность использования программы.", TAG);
             sendStatusReport(StatusEnum.STOPPED);
             return false;
         }
@@ -415,7 +467,7 @@ public final class MarkOpService extends Service {
         Vehicle = settings.getText(LocalSettings.SP_VEHICLE);
 
         if ((Vehicle == null) || Vehicle.equals("")) {
-            DebugUtils.debugPrintError(context,"Пожалуйста, укажите гос. номер ТС.", TAG);
+            DebugUtils.toastPrintError(context,"Пожалуйста, укажите гос. номер ТС.", TAG);
             sendStatusReport(StatusEnum.STOPPED);
             return false;
         }
@@ -428,16 +480,12 @@ public final class MarkOpService extends Service {
         ServerAddress = settings.getText(LocalSettings.SP_SERVER_ADDRESS);
 
         if (ServerAddress == null || ServerAddress.equals("")){
-            DebugUtils.debugPrintError(context,"Пожалуйста, укажите адрес удаленного сервера в настройках вашего приложения!", TAG);
+            DebugUtils.toastPrintError(context,"Пожалуйста, укажите адрес удаленного сервера в настройках вашего приложения!", TAG);
             sendStatusReport(StatusEnum.STOPPED);
             return false;
         }
-
-        // Удаляем из очереди все имеющиеся сообщения, если таковые имеются.
-        queueHandler.removeCallbacksAndMessages(null);
-
-        // Запускаем обработчик запросов (периодические запросы на отметку на сервере).
-        queueHandler.sendMessage(Message.obtain(queueHandler, MSG_MARK, context));
+        // Запусаем в обработку в потоке первое задание на отметку.
+        kickstartMarkMessage(context);
 
         // Отсылаем отчет в главное активити.
         sendStatusReport(StatusEnum.ACTIVATED);
@@ -445,6 +493,62 @@ public final class MarkOpService extends Service {
         return true;
     }
 
+    private void kickstartMarkMessage(Context context){
+        // Удаляем из очереди все имеющиеся сообщения, если таковые имеются.
+        queueHandler.removeCallbacksAndMessages(null);
+        // Запускаем обработчик запросов (периодические запросы на отметку на сервере).
+        queueHandler.sendMessage(Message.obtain(queueHandler, MSG_MARK, context));
+    }
+
+
+    // Обрабатывает события об изменении статуча подключения к WiFi сети.
+    private void wifiStateChanged(boolean isConnected,Context context){
+        // Если сеть появилась и в очереди сообщений имеются отложенные задания на отметку, пытаемся
+        // форсировать их обработку путем удаления старых и создания новых заданий для выполнения их без задержки.
+        if (    isConnected &&                          // Появилось подключение к сети WiFi.
+                queueHandler.hasMessages(MSG_MARK) &&   // В очереди сообщений есть отложенный запрос на отметку.
+                !srvResponseStatus.equalsIgnoreCase("postpone") && // Это сообщение не было отложено по причине преждевременной попытки отметится.
+                !srvResponseStatus.equalsIgnoreCase("blocked")){   // Это сообщение не было отложено по причине блокировки клиента.
+            /////////////////////////////////////////////////////////////////////////////////
+            //Log.i(TAG, "WiFi network is "+isConnected);
+            //Log.i(TAG, "WiFi network is "+isConnected+". Thread state: "+queueThreadHandler.getState().toString());
+            /////////////////////////////////////////////////////////////////////////////////
+            // Перезапускаем в обработку в потоке задание на отметку.
+            kickstartMarkMessage(context);
+        }
+    }
+
+    // Вспомогательная глобальная переменная-защелка.
+    private boolean connected_latch;
+    // Регистрируется приемник широковещательных сообщений об изменении состояния WiFi-сети (подключена/отключена).
+    private void registerBroadcast(){
+        final IntentFilter filters = new IntentFilter();
+        //filters.addAction("android.net.wifi.WIFI_STATE_CHANGED");
+        //filters.addAction("android.net.wifi.STATE_CHANGE");
+        filters.addAction("android.net.conn.CONNECTIVITY_CHANGE");
+        receiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                ConnectivityManager connMgr = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+                NetworkInfo wifi = connMgr.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+
+                boolean isConnected = wifi != null && wifi.isConnected();
+
+                if (isConnected && !connected_latch) {
+                    wifiStateChanged(connected_latch = true,context);
+                } else if (!isConnected && connected_latch){
+                    wifiStateChanged(connected_latch = false,context);
+                }
+            }
+        };
+        super.registerReceiver(receiver, filters);
+    }
+
+    private void unregisterBroadcast(){
+        if (receiver != null){
+            super.unregisterReceiver(receiver);
+        }
+    }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -502,6 +606,7 @@ public final class MarkOpService extends Service {
     public void onDestroy() {
         super.onDestroy();
         //onServiceDestroy();
+        unregisterBroadcast();
         stop();
     }
 
@@ -510,10 +615,12 @@ public final class MarkOpService extends Service {
         Log.i(TAG, "Stop triggered. Status changed to: {STOPPED}");
     }
 
+    /*
     public void onServiceDestroy(){
         stop();
         if (requestQueue != null)       requestQueue.stop();
         if (queueThreadHandler != null) queueThreadHandler.quitSafely();
         if (settings != null)           settings = null;
     }
+    */
 }

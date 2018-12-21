@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
     <PreferenceCategory
+        android:title="О программе">
+        <Preference
+            android:title="Название: «Учет ходок» - v1.13"
+            android:selectable="false"/>
+    </PreferenceCategory>
+
+    <PreferenceCategory
         android:title="Общие настройки">
         <CheckBoxPreference
             android:key="use_vibro"
@@ -15,7 +22,29 @@
             android:key="use_music"
             android:title="Разрешить аудио"
             android:summary="Разрешает/запрещает аудио-оповещение после каждой успешной отметки." />
+        <CheckBoxPreference
+            android:key="use_screen_wakeup"
+            android:title="Разрешить пробуждение экрана"
+            android:summary="Разрешает/запрещает пробуждение (свечение) экрана после каждой успешной отметки." />
     </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="Всплывающие сообщения">
+        <CheckBoxPreference
+            android:key="use_popup_info"
+            android:title="Информационные"
+            android:summary="Требуется ли выводить всплывающие информационные сообщения." />
+        <CheckBoxPreference
+            android:key="use_popup_warn"
+            android:title="Предупреждения"
+            android:summary="Требуется ли выводить всплывающие предупреждения." />
+        <CheckBoxPreference
+            android:key="use_popup_error"
+            android:title="Об ошибках"
+            android:summary="Требуется ли выводить всплывающие сообщения об ошибках." />
+    </PreferenceCategory>
+
+
     <PreferenceCategory
         android:title="Управление базой данных">
     <CheckBoxPreference
