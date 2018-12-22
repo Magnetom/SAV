@@ -419,7 +419,7 @@ public final class MarkOpService extends Service {
     // Например, активити настроек может запросить остановить менеджер после изменения важных настроек.
     public void setStopRequest (){
         isStopRequested = true;
-        //stopRequestedPoll();
+        stopRequestedPoll();
     }
 
     private void clrStopRequest(){
