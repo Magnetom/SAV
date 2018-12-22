@@ -60,7 +60,7 @@ public final class MarkOpService extends Service {
     // Таймаут в случае отсутствия ответа от сервера при Volley-запросе на порт 80 на сервере.
     private static final int TIMEOUT_SERVER_80_TIMEOUT  = SECONDS_5;
     // Таймаут в случае, если сервер коррктно вернул в ответе статус ошибки выполнения скрипта.
-    private static final int TIMEOUT_SERVER_OWN_FATAL   = MINUTES_10;
+    private static final int TIMEOUT_SERVER_OWN_FATAL   = SECONDS_30;
 
     /* Блок установок времени */
     // Продолжительность свечения экрана после удачной отметки.
@@ -104,6 +104,8 @@ public final class MarkOpService extends Service {
     private String srvResponseStatus;
 
     private BroadcastReceiver receiver;
+
+    private PowerManager.WakeLock serviceWakeLock;
 
     /**
      * Called by the system when the service is first created.  Do not call this method directly.
@@ -417,7 +419,7 @@ public final class MarkOpService extends Service {
     // Например, активити настроек может запросить остановить менеджер после изменения важных настроек.
     public void setStopRequest (){
         isStopRequested = true;
-        stopRequestedPoll();
+        //stopRequestedPoll();
     }
 
     private void clrStopRequest(){
@@ -426,15 +428,35 @@ public final class MarkOpService extends Service {
 
     private boolean stopRequestedPoll(){
         if (isStopRequested){
-            Log.i(TAG, "Stop request was detected!");
             isStopRequested = false;
             // Удаляем из очереди все имеющиеся сообщения, если таковые имеются.
             queueHandler.removeCallbacksAndMessages(null);
             // Отчет о статусе.
             sendStatusReport(StatusEnum.STOPPED);
+            // Освобождаем ресурсы процессора по обработке потока отметок.
+            serviceWakeUnlock();
+            Log.i(TAG, "Stop request was detected! Status changed to {STOPPED}.");
             return true;
         }
         return false;
+    }
+
+    // Дает возможность сервису работать даже после отключения дисплея (блокировки экрана).
+    private void serviceWakeLock(Context context){
+        PowerManager mgr = (PowerManager)context.getSystemService(Context.POWER_SERVICE);
+        serviceWakeLock = mgr.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "sav:mark_service_unlock");
+        if (serviceWakeLock != null) {
+            serviceWakeLock.acquire();
+            Log.i(TAG, "Service Waked Lock.");
+        }
+    }
+
+    // Отключить возможность сервиса выполняться во вемя блокировки экрана.
+    private void serviceWakeUnlock(){
+        if (serviceWakeLock != null) {
+            serviceWakeLock.release();
+            Log.i(TAG, "Service Waked UnLock.");
+        }
     }
 
     // Зажечь экран на предустановленное время.
@@ -443,7 +465,7 @@ public final class MarkOpService extends Service {
         boolean isScreenOn = pm.isInteractive();
         if(!isScreenOn)
         {
-            PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.FULL_WAKE_LOCK |PowerManager.ACQUIRE_CAUSES_WAKEUP |PowerManager.ON_AFTER_RELEASE,"sav:service");
+            PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.FULL_WAKE_LOCK |PowerManager.ACQUIRE_CAUSES_WAKEUP |PowerManager.ON_AFTER_RELEASE,"sav:screen_wakeup");
             wl.acquire(DURATION_SCREEN_WAKE_UP);
 
             PowerManager.WakeLock wl_cpu = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"sav:service_cpu");
@@ -454,6 +476,9 @@ public final class MarkOpService extends Service {
     /* Запустить поток для автоматического выполнения отметок в бесконечном цикле. */
     public Boolean reRun(Context context){
         clrStopRequest();
+
+        // Заблокировать возможность остановки сервиса средствами ОС Android после блокировки дисплея.
+        serviceWakeLock(context);
 
         // Проверяем флаг глобального разрешения/запрещения работы приложения
         Boolean globEnable = settings.getBoolean(LocalSettings.SP_GLOBAL_ENABLE);
@@ -509,10 +534,6 @@ public final class MarkOpService extends Service {
                 queueHandler.hasMessages(MSG_MARK) &&   // В очереди сообщений есть отложенный запрос на отметку.
                 !srvResponseStatus.equalsIgnoreCase("postpone") && // Это сообщение не было отложено по причине преждевременной попытки отметится.
                 !srvResponseStatus.equalsIgnoreCase("blocked")){   // Это сообщение не было отложено по причине блокировки клиента.
-            /////////////////////////////////////////////////////////////////////////////////
-            //Log.i(TAG, "WiFi network is "+isConnected);
-            //Log.i(TAG, "WiFi network is "+isConnected+". Thread state: "+queueThreadHandler.getState().toString());
-            /////////////////////////////////////////////////////////////////////////////////
             // Перезапускаем в обработку в потоке задание на отметку.
             kickstartMarkMessage(context);
         }
@@ -612,15 +633,6 @@ public final class MarkOpService extends Service {
 
     public void stop(){
         setStopRequest();
-        Log.i(TAG, "Stop triggered. Status changed to: {STOPPED}");
+        Log.i(TAG, "Stop trigger was requested ...");
     }
-
-    /*
-    public void onServiceDestroy(){
-        stop();
-        if (requestQueue != null)       requestQueue.stop();
-        if (queueThreadHandler != null) queueThreadHandler.quitSafely();
-        if (settings != null)           settings = null;
-    }
-    */
 }
