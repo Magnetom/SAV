@@ -104,6 +104,9 @@ public class LocalPrefActivity extends PreferenceActivity implements SharedPrefe
                         .show();
             }
         }
+
+        // Обновляем настройки в кеше настроек.
+        LocalSettings.getInstance(context).updateCacheSettings();
     }
 
     @Override

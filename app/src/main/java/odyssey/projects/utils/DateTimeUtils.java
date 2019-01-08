@@ -71,6 +71,16 @@ public class DateTimeUtils {
         }
     }
 
+    public static String getCurrentTimeStampForFileName(){
+        try {
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US);
+            return dateFormat.format(new Date(System.currentTimeMillis()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public static long dateTimeToTimestamp1 (String dateTime){
 
         String.format("%tF %<tT.%<tL", dateTime);

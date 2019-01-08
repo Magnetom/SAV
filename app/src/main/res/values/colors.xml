@@ -15,9 +15,16 @@
     <color name="colorHintTextGray">#d6d5d5</color>
     <color name="colorTextActive">#fac552</color>
     <color name="colorTextNormal">#e5e5e5</color>
+    <color name="colorWhite">#fffffe</color>
+    <color name="colorTextDark">#3a4b53</color>
+    <color name="colorTextDark2">#535d61</color>
+    <color name="colorTextNormal2">#6d818b</color>
+    <color name="colorTextMedium">#8ea3ae</color>
+    <color name="colorTextLight">#bfc3c4</color>
+    <color name="colorTextBlue">#ff33b5e5</color>
+    <color name="colorTextLightBlue">#E1F5FE</color>
 
     <color name="colorSwitchTrack">#ffc952</color>
-
 
     <color name="colorSquareMarkOuter">#ff33b5e5</color>
     <color name="colorSquareMarkInner">#3a4b53</color>
@@ -26,6 +33,15 @@
     <color name="colorSquareInfoOuter">#558000</color>
 
 
+    <color name="colorLogTopPanel">#3a4b53</color>
+    <color name="colorLogBottomPanel">#3a4b53</color>
+
+    <color name="colorLogErrorText">#d75650</color>
+    <color name="colorLogItemLeftDecoration">#6d818b</color>
+    <color name="colorLogItemTypeDEBUG">#6d818b</color>
+    <color name="colorLogItemTypeINFO">#ff33b5e5</color>
+    <color name="colorLogItemTypeWARNING">#ffc952</color>
+    <color name="colorLogItemTypeERROR">#d75650</color>
 
 
 </resources>

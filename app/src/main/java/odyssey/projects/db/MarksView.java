@@ -16,6 +16,7 @@ import android.widget.SimpleCursorAdapter;
 import odyssey.projects.adapters.MarksCursorAdapter;
 import odyssey.projects.callbacks.CallbacksProvider;
 import odyssey.projects.pref.LocalSettings;
+import odyssey.projects.pref.SettingsCache;
 import odyssey.projects.sav.driver.R;
 
 import static odyssey.projects.utils.DateTimeUtils.timestampToStringYYYYMMDD;
@@ -48,7 +49,7 @@ public class MarksView extends DbProc {
 
     @Override
     void setupListView() {
-        listView = (ListView)   (((AppCompatActivity) context).findViewById(R.id.mainListView));
+        listView = (((AppCompatActivity) context).findViewById(R.id.mainListView));
         if (listView == null) return;
 
         // Настраиваем view для случая пустого списка.
@@ -94,7 +95,7 @@ public class MarksView extends DbProc {
         }
         @Override
         public Cursor loadInBackground() {
-            String current_vehicle = LocalSettings.getInstance(getContext()).getText(LocalSettings.SP_VEHICLE);
+            String current_vehicle = SettingsCache.VEHICLE;
             if (current_vehicle != null && (!current_vehicle.equals("")) ) return db.getAllMarks(current_vehicle, timestampToStringYYYYMMDD(System.currentTimeMillis()));
             else
                 //return db.getAllMarks();

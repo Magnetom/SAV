@@ -8,7 +8,7 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AlertDialog;
-import android.support.v7.preference.PreferenceFragmentCompat;
+import com.takisoft.fix.support.v7.preference.PreferenceFragmentCompat;
 import android.view.View;
 
 import odyssey.projects.callbacks.CallbacksProvider;
@@ -19,10 +19,18 @@ import odyssey.projects.sav.driver.R;
 public final class UserSettingsPreferenceFragment extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener{
 
     @Override
+    public void onCreatePreferencesFix(@Nullable Bundle savedInstanceState, String rootKey) {
+        setPreferencesFromResource(R.xml.user_settigs, rootKey);
+        // additional setup
+    }
+
+    /*
+    @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         // Load the preferences from an XML resource
         setPreferencesFromResource(R.xml.user_settigs, rootKey);
     }
+    */
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
@@ -104,6 +112,9 @@ public final class UserSettingsPreferenceFragment extends PreferenceFragmentComp
                         .show();
             }
         }
+
+        // Обновляем настройки в кеше настроек.
+        LocalSettings.getInstance(context).updateCacheSettings();
     }
 
 

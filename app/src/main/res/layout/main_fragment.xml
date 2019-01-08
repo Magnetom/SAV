@@ -12,6 +12,7 @@
     <android.support.constraint.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:background="@drawable/background"
         app:layout_constraintBottom_toBottomOf="@+id/mainConstraintLayout"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -178,10 +179,11 @@
             app:srcCompat="@drawable/calendar_gray" />
 
         <android.support.constraint.ConstraintLayout
+            android:id="@+id/headerSplitHorizontalLine"
             android:layout_width="0dp"
             android:layout_height="1px"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="8dp"
+            android:layout_marginStart="0dp"
+            android:layout_marginEnd="0dp"
             android:background="@drawable/split_line"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"

@@ -1,4 +1,4 @@
-package odyssey.projects.utils;
+package odyssey.projects.sav.utils;
 
 import android.content.Context;
 import android.util.Log;
@@ -6,7 +6,6 @@ import android.widget.Toast;
 
 import com.android.volley.VolleyError;
 
-import odyssey.projects.pref.LocalSettings;
 
 public class DebugUtils {
 
@@ -21,17 +20,14 @@ public class DebugUtils {
     }
 
     public static void toastPrintInfo(Context context, String info, String tag){
-        if (LocalSettings.getInstance(context).getBoolean(LocalSettings.SP_USE_POPUP_INFO))
         toastPrint(context, "Информация:", info, tag);
     }
 
     public static void toastPrintWarning(Context context, String warn, String tag){
-        if (LocalSettings.getInstance(context).getBoolean(LocalSettings.SP_USE_POPUP_WARN))
         toastPrint(context, "Внимание!", warn, tag);
     }
 
     public static void toastPrintError(Context context, String error, String tag){
-        if (LocalSettings.getInstance(context).getBoolean(LocalSettings.SP_USE_POPUP_ERROR))
         toastPrint(context, "Ошибка", error, tag);
     }
 

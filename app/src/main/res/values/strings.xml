@@ -4,5 +4,6 @@
     <string name="allowed_symbols_rus">0123456789АВЕКМНОРСТУХ</string>
     <string name="allowed_symbols_eng_rus">ABCEHKMOPSTRUYX0123456789АВЕКМНОРСТУХ</string>
     <string name="allowed_digits">+- 0123456789.</string>
+    <string name="allowed_digits_only">0123456789</string>
 
 </resources>

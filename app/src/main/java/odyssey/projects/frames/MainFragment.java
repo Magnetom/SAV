@@ -24,6 +24,7 @@ import odyssey.projects.callbacks.MarkStatusListener;
 import odyssey.projects.callbacks.MarksDatasetListener;
 import odyssey.projects.db.MarksView;
 import odyssey.projects.pref.LocalSettings;
+import odyssey.projects.pref.SettingsCache;
 import odyssey.projects.sav.driver.R;
 import odyssey.projects.sav.driver.VehicleSelectActivity;
 import odyssey.projects.services.MarkOpService;
@@ -272,7 +273,7 @@ public final class MainFragment extends Fragment {
         // Нажатие на кнопку ГОСНОМЕР.
         if (vehicleFrameButton != null){
             // Устанавливаем текущий госномер из локальных настроек.
-            String currentVehicle = LocalSettings.getInstance(getContext()).getText(LocalSettings.SP_VEHICLE);
+            String currentVehicle = SettingsCache.VEHICLE;
             vehicleFrameButton.setHapticFeedbackEnabled(true); // Поддержка обратной связи в виде вибрации от нажатия на элемент.
             vehicleFrameButton.setText((currentVehicle.equals("")?"------":currentVehicle));
             vehicleFrameButton.setOnClickListener(new View.OnClickListener() {
@@ -292,12 +293,14 @@ public final class MainFragment extends Fragment {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 mainSwitch.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
-                if (!isChecked) {
-                    // Останавливаем менеджер управления отметками.
-                    getActivity().stopService(new Intent(getContext(), MarkOpService.class));
-                } else {
-                    // Запускаем менеджер управления отметками.
-                    getActivity().startService(new Intent(getContext(), MarkOpService.class).putExtra(ACTION_TYPE_CMD, MarkOpService.CMD_RUN_MARKS));
+                if (mainSwitch.isPressed()){
+                    if (!isChecked) {
+                        // Останавливаем менеджер управления отметками.
+                        getActivity().stopService(new Intent(getContext(), MarkOpService.class));
+                    } else {
+                        // Запускаем менеджер управления отметками.
+                        getActivity().startService(new Intent(getContext(), MarkOpService.class).putExtra(ACTION_TYPE_CMD, MarkOpService.CMD_RUN_MARKS));
+                    }
                 }
             }
         });
@@ -312,7 +315,7 @@ public final class MainFragment extends Fragment {
     }
 
     protected void updateCurrentVehicleFrame(){
-        String vehicle = LocalSettings.getInstance(getContext()).getText(LocalSettings.SP_VEHICLE);
+        String vehicle = SettingsCache.VEHICLE;
         // Обновляем содержимое кнопки.
         if (vehicleFrameButton!=null) vehicleFrameButton.setText( vehicle.equals("")?"--------":vehicle);
     }
@@ -326,7 +329,9 @@ public final class MainFragment extends Fragment {
         String vehicle = data.getStringExtra("VEHICLE");
         if (vehicle != null && !vehicle.equals("")){
             // Сохраняем выбанное ТС в локальные настройки.
-            LocalSettings.getInstance(getContext()).saveText(LocalSettings.SP_VEHICLE, vehicle);
+            LocalSettings localSettings = LocalSettings.getInstance(getContext());
+            localSettings.saveText(LocalSettings.SP_VEHICLE, vehicle);
+            localSettings.updateCacheSettings();
             // Останавливаем менеджер управления отметками.
             getActivity().stopService(new Intent(getContext(), MarkOpService.class));
             // Обновляем список отметок для текущего ТС.
