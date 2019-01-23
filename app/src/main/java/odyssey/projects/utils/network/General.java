@@ -1,22 +1,29 @@
-package odyssey.projects.utils;
+package odyssey.projects.utils.network;
 
 import android.content.Context;
 import android.net.ConnectivityManager;
+import android.net.Network;
 import android.net.NetworkInfo;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.net.URL;
+import java.util.Enumeration;
 
+import odyssey.projects.utils.network.wifi.WifiHelper;
+
+import static android.content.Context.WIFI_SERVICE;
 import static android.net.ConnectivityManager.TYPE_WIFI;
 
 /**
  * Created by Odyssey on 28.03.2017.
  */
 
-public class WebUtils {
+public class General {
 
     public boolean isURLAlive(String url_to_chk) {
 
@@ -66,12 +73,25 @@ public class WebUtils {
         return true;
     }
 
+    public static boolean isReachableByPing_wifi(Context context, String address) {
+
+        try{
+            InetAddress pingAddr  = InetAddress.getByName(address);
+            NetworkInterface iFace = WifiHelper.getActiveWifiInterface(context);
+            return pingAddr.isReachable(iFace, 200, 500);
+        }  catch (Exception e){
+            e.printStackTrace();
+        }
+        return true;
+
+    }
+
     /**
      * Checks if the current server address is reachable by ping command.
      * @param address
      * @return TRUE if reachable, otherwise FALSE.
      */
-    public static boolean isReachableByPing(String address) {
+    public static boolean isReachableByPing_old(String address) {
 
         Runtime runtime = null;
         InetAddress InAddr = null;
@@ -80,7 +100,7 @@ public class WebUtils {
         try{
             runtime = Runtime.getRuntime();
             InAddr = InetAddress.getByName(address);
-            Process  mIpAddrProcess = runtime.exec("/system/bin/ping -c 1 " + InAddr.getHostAddress());
+            Process  mIpAddrProcess = runtime.exec("/system/bin/ping -c 1 -w 2 " + InAddr.getHostAddress());
             int mExitValue = mIpAddrProcess.waitFor();
 
             if(mExitValue==0){
@@ -92,34 +112,6 @@ public class WebUtils {
             e.printStackTrace();
         }
         return true;
-    }
-
-    public static boolean isWiFiNetwork(final Context context) {
-        // Получаем контекст менеджера соединений.
-        final ConnectivityManager cm = ((ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE));
-        // Если есть активное соединение с какой-либо сетью ...
-        if (cm.getActiveNetworkInfo() != null && cm.getActiveNetworkInfo().isConnected()){
-            // Получаем информацию о текущем сетевом соединении.
-            NetworkInfo NetInfo = cm.getActiveNetworkInfo();
-            // Если это сеть Wi-Fi - возвращаем TRUE.
-            if (NetInfo != null){
-                if (NetInfo.getType() == TYPE_WIFI) return true;
-            }
-        }
-        return false;
-    }
-
-    /** Get WiFi router MAC. */
-    public static String getWifiBSSID(final Context context) {
-
-        WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
-
-        WifiInfo wifi = wifiManager.getConnectionInfo();
-        if (wifi != null) {
-            // Get current router MAC address
-            return wifi.getBSSID();
-        }
-        return null;
     }
 
     public static boolean isNetworkConnected(final Context context) {
@@ -141,4 +133,20 @@ public class WebUtils {
         }
     }
 
+    public static String getIpv6Address() {
+        try {
+            for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements();) {
+                NetworkInterface intf = en.nextElement();
+                for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr.hasMoreElements();) {
+                    InetAddress inetAddress = enumIpAddr.nextElement();
+                    if (!inetAddress.isLoopbackAddress()) {
+                        return inetAddress.getHostAddress().toString();
+                    }
+                }
+            }
+        } catch (SocketException e) {
+            // Log.e(Constants.LOG_TAG, e.getMessage(), e);
+        }
+        return null;
+    }
 }

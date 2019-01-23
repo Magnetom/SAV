@@ -2,9 +2,13 @@ package odyssey.projects.pref;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.Resources;
 import android.preference.PreferenceManager;
 
+import odyssey.projects.About;
+import odyssey.projects.sav.driver.R;
 import odyssey.projects.sav.driver.Settings;
+
 
 /**
  * Created by Odyssey on 25.04.2017.
@@ -12,17 +16,27 @@ import odyssey.projects.sav.driver.Settings;
 
 public class LocalSettings {
 
-    // Текущее транспортное средство.
-    public  static final String SP_VEHICLE           = "vehicle";
-    private static final String SP_SERVER_ADDRESS    = "server_address";
-    private static final String SP_USE_SSID_FILTER   = "use_ssid_filter";
-    private static final String SP_ALLOWED_WIFI_SSID = "pref_wifi_ssid";
-    private static final String SP_NOT_FIRST_JOIN    = "not_first_join";
-    public  static final String SP_ALL_DB_REMOVE     = "all_db_remove";
-    private static final String SP_GLOBAL_ENABLE     = "global_enable";
-    private static final String SP_USE_VIBRO         = "use_vibro";
-    private static final String SP_USE_MUSIC         = "use_music";
-    private static final String SP_USE_SCREEN_WAKEUP = "use_screen_wakeup";
+    public static final String SP_SW_VERSION          = "sw_version";
+    public static final String SP_SW_NAME             = "sw_name";
+
+    public static final String SP_GLOBAL_ENABLE       = "global_enable";
+    public static final String SP_MULTI_VEHICLE_MODE  = "multi_vehicle_enable";
+
+    public static final String SP_VEHICLE             = "vehicle"; // Текущее транспортное средство.
+
+    private static final String SP_SERVER_ADDRESS     = "server_address";
+
+    private static final String SP_USE_SSID_FILTER    = "use_ssid_filter";
+    private static final String SP_USE_BSSID_FILTER   = "use_bssid_filter";
+    private static final String SP_ALLOWED_WIFI_SSID  = "pref_wifi_ssid";
+    private static final String SP_ALLOWED_WIFI_BSSID = "pref_wifi_bssid";
+
+    private static final String SP_NOT_FIRST_JOIN     = "not_first_join";
+    public  static final String SP_ALL_DB_REMOVE      = "all_db_remove";
+
+    private static final String SP_USE_VIBRATION      = "use_vibration";
+    private static final String SP_USE_MUSIC          = "use_music";
+    private static final String SP_USE_SCREEN_WAKEUP  = "use_screen_wakeup";
 
     private static final String SP_USE_POPUP_INFO  = "use_popup_info";
     private static final String SP_USE_POPUP_WARN  = "use_popup_warn";
@@ -33,8 +47,6 @@ public class LocalSettings {
     public  static final String SP_DEBUG_LOG_INFO       = "debug_log_info";
     public  static final String SP_DEBUG_LOG_WARN       = "debug_log_warn";
     public  static final String SP_DEBUG_LOG_ERROR      = "debug_log_error";
-
-
 
     private static final String APP_DEFAULT_PREFERENCES = "AppSettings";
 
@@ -48,10 +60,17 @@ public class LocalSettings {
     private LocalSettings(Context context){
         //sPref = context.getSharedPreferences(APP_DEFAULT_PREFERENCES, Context.MODE_PRIVATE);
         sPref = PreferenceManager.getDefaultSharedPreferences(context);
+        // Предварительные настройки.
+        setup ();
         // Настройки, которые будут применены при первом запуске.
         firstJoin();
         // Обновляем настройки в кеше настроек.
         updateCacheSettings();
+    }
+
+    private void setup() {
+        saveText(SP_SW_VERSION, About.SW_VERSION);
+        saveText(SP_SW_NAME,    About.SW_NAME);
     }
 
     public static LocalSettings getInstance(Context context){
@@ -64,20 +83,27 @@ public class LocalSettings {
             saveBoolean(SP_NOT_FIRST_JOIN, true);
 
             // Применяем настройки по-умолчанию (при первом запуске програмы).
-            saveBoolean(SP_GLOBAL_ENABLE, false); // Глобальное разрешение работы приложение - ЗАПРЕЩЕНО.
-            saveBoolean(SP_USE_SSID_FILTER, true); // Использовать SSID-фильтрацию.
-            saveBoolean(SP_USE_VIBRO, true); // Использовать виро-оповещение об успешной отметке.
-            saveBoolean(SP_USE_MUSIC, true); // Использовать аудио-оповещение об успешной отметке.
+            saveBoolean(SP_GLOBAL_ENABLE, false);   // Глобальное разрешение работы приложение - ЗАПРЕЩЕНО.
+            saveBoolean(SP_USE_BSSID_FILTER, true); // Использовать BSSID-фильтрацию.
+            saveBoolean(SP_USE_SSID_FILTER, true);  // Использовать SSID-фильтрацию.
+
+            saveBoolean(SP_USE_VIBRATION, true);     // Использовать виро-оповещение об успешной отметке.
+            saveBoolean(SP_USE_MUSIC, true);         // Использовать аудио-оповещение об успешной отметке.
             saveBoolean(SP_USE_SCREEN_WAKEUP, true); // Использовать пробуждение экрана после удачной отметки на сервере.
-            saveText(SP_ALLOWED_WIFI_SSID, Settings.ALLOWED_WIFI_DEFAULT_SSID); // Одобренный SSID по-умолчанию.
-            saveText(SP_SERVER_ADDRESS,    Settings.DB_SERVER_DEFAULT_ADDRESS); // Адрес/имя удаленного сервера.
+
+            saveText(SP_ALLOWED_WIFI_BSSID, Settings.ALLOWED_WIFI_DEFAULT_BSSID); // Одобренный BSSID по-умолчанию.
+            saveText(SP_ALLOWED_WIFI_SSID,  Settings.ALLOWED_WIFI_DEFAULT_SSID);  // Одобренный SSID по-умолчанию.
+            saveText(SP_SERVER_ADDRESS,     Settings.DB_SERVER_DEFAULT_ADDRESS);  // Адрес/имя удаленного сервера.
 
             saveBoolean(SP_USE_POPUP_INFO,  true); // Использовать всплывающие информационные сообщения.
             saveBoolean(SP_USE_POPUP_WARN,  true); // Использовать всплывающие предупреждения.
             saveBoolean(SP_USE_POPUP_ERROR, true); // Использовать всплывающие сообщения об ошибках.
 
-            saveBoolean(SP_USE_DEBUG_LOG, false);  // Использовать логирование отладочной информации в специальный ListView.
-            saveInt(SP_DEBUG_LOG_MAX_LINES, 1000); // Максимальное количество элементов списка оладочного лога событий.
+            saveBoolean(SP_USE_DEBUG_LOG, false);     // Использовать логирование отладочной информации в специальный ListView.
+            saveBoolean(SP_DEBUG_LOG_INFO, true);
+            saveBoolean(SP_DEBUG_LOG_WARN, true);
+            saveBoolean(SP_DEBUG_LOG_ERROR, true);
+            saveText(SP_DEBUG_LOG_MAX_LINES, "1000"); // Максимальное количество элементов списка оладочного лога событий.
         }
     }
 
@@ -94,10 +120,10 @@ public class LocalSettings {
         editor.apply();
     }
 
-    public String getText (String key){
+    private String getText(String key){
         return sPref.getString(key, "");
     }
-    public String getText (String key, String defaultValue){
+    private String getText(String key, String defaultValue){
         return sPref.getString(key, defaultValue);
     }
 
@@ -136,15 +162,17 @@ public class LocalSettings {
 
     public void updateCacheSettings(){
 
-        SettingsCache.GLOBAL_ENABLE     = getBoolean(SP_GLOBAL_ENABLE);
+        SettingsCache.GLOBAL_ENABLE      = getBoolean(SP_GLOBAL_ENABLE);
 
-        SettingsCache.VEHICLE           = getText(SP_VEHICLE,    "");
+        SettingsCache.VEHICLE            = getText(SP_VEHICLE,    "");
 
-        SettingsCache.SERVER_ADDRESS    = getText(SP_SERVER_ADDRESS,    Settings.DB_SERVER_DEFAULT_ADDRESS);
-        SettingsCache.USE_SSID_FILTER   = getBoolean(SP_USE_SSID_FILTER);
-        SettingsCache.ALLOWED_WIFI_SSID = getText(SP_ALLOWED_WIFI_SSID, Settings.ALLOWED_WIFI_DEFAULT_SSID);
+        SettingsCache.SERVER_ADDRESS     = getText(SP_SERVER_ADDRESS,    Settings.DB_SERVER_DEFAULT_ADDRESS);
+        SettingsCache.USE_BSSID_FILTER   = getBoolean(SP_USE_BSSID_FILTER);
+        SettingsCache.ALLOWED_WIFI_BSSID = getText(SP_ALLOWED_WIFI_BSSID, Settings.ALLOWED_WIFI_DEFAULT_BSSID);
+        SettingsCache.USE_SSID_FILTER    = getBoolean(SP_USE_SSID_FILTER);
+        SettingsCache.ALLOWED_WIFI_SSID  = getText(SP_ALLOWED_WIFI_SSID, Settings.ALLOWED_WIFI_DEFAULT_SSID);
 
-        SettingsCache.USE_VIBRO         = getBoolean(SP_USE_VIBRO);
+        SettingsCache.USE_VIBRO         = getBoolean(SP_USE_VIBRATION);
         SettingsCache.USE_MUSIC         = getBoolean(SP_USE_MUSIC);
         SettingsCache.USE_SCREEN_WAKEUP = getBoolean(SP_USE_SCREEN_WAKEUP);
 

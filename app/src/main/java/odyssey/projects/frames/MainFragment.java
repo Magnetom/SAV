@@ -23,6 +23,7 @@ import odyssey.projects.callbacks.LoopsCountListener;
 import odyssey.projects.callbacks.MarkStatusListener;
 import odyssey.projects.callbacks.MarksDatasetListener;
 import odyssey.projects.db.MarksView;
+import odyssey.projects.debug.DebugOut;
 import odyssey.projects.pref.LocalSettings;
 import odyssey.projects.pref.SettingsCache;
 import odyssey.projects.sav.driver.R;
@@ -34,6 +35,7 @@ import static odyssey.projects.sav.driver.Settings.ACTION_TYPE_CMD;
 import static odyssey.projects.utils.DateTimeUtils.getDDMMYYYY;
 
 public final class MainFragment extends Fragment {
+    public static final String TAG = "MAI_FRAGMENT";
 
     // Состояния автомата в обработчике сообщений о статусе.
     public static final int MSG_ST_CHANGE_STATUS = 1;
@@ -332,6 +334,9 @@ public final class MainFragment extends Fragment {
             LocalSettings localSettings = LocalSettings.getInstance(getContext());
             localSettings.saveText(LocalSettings.SP_VEHICLE, vehicle);
             localSettings.updateCacheSettings();
+
+            DebugOut.generalPrintInfo(getContext(),"Зафиксирована смена госномера на "+vehicle+".", TAG);
+
             // Останавливаем менеджер управления отметками.
             getActivity().stopService(new Intent(getContext(), MarkOpService.class));
             // Обновляем список отметок для текущего ТС.

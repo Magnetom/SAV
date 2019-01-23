@@ -3,35 +3,56 @@
     <PreferenceCategory
         android:title="Общие настройки">
         <CheckBoxPreference
-            android:key="global_enable"
+            android:key="@string/sp_global_enable"
             android:title="Разрешить работу"
             android:summary="Разрешает/запрещает работу приложения." />
-    </PreferenceCategory>
-    <PreferenceCategory
-        android:title="Управление базой данных">
+        <!--
         <CheckBoxPreference
-            android:key="all_db_remove"
-            android:title="Очистить все"
-            android:summary="Обнулить все текущие настройки и удалить все накопленные данные." />
+            android:key="@string/sp_multi_vehicle_mode"
+            android:title="Мультитранспортный режим"
+            android:summary="Разрешает/запрещает использование нескольких гос. номеров на одном устройстве." />
+            -->
     </PreferenceCategory>
     <PreferenceCategory
         android:title="Сетевые настройки">
         <EditTextPreference
-            android:key="server_address"
+            android:key="@string/sp_server_address"
             android:title="Адрес сервера"
             android:summary="Установить адрес сервера."
             android:dialogTitle="Введите ip-адрес или доменное имя."
             android:defaultValue="192.168.1.2"/>
+
         <CheckBoxPreference
-            android:key="use_ssid_filter"
+            android:key="@string/sp_use_ssid_filter"
             android:title="Wi-Fi SSID фильтр"
+            android:summary="Подсоединяться только к предопределенной WiFi сети." />
+        <EditTextPreference
+            android:key="@string/sp_pref_wifi_ssid"
+            android:dependency="@string/sp_use_ssid_filter"
+            android:title="Wi-Fi SSID"
+            android:summary="Установить одобренное SSID имя WiFi сети."
+            android:dialogTitle="Введите SSID (Например: AURA)"
+            android:defaultValue="AURA"/>
+
+        <CheckBoxPreference
+            android:key="@string/sp_use_bssid_filter"
+            android:title="Wi-Fi BSSID фильтр"
             android:summary="Подсоединяться только к предопределенному WiFi-маршрутизатору." />
         <EditTextPreference
-            android:key="pref_wifi_ssid"
-            android:dependency="use_ssid_filter"
-            android:title="Wi-Fi SSID"
-            android:summary="Установить одобренный SSID WiFi-маршрутизатора."
-            android:dialogTitle="Введите SSID в формате (00:00:00:00:00:00)" />
+            android:key="@string/sp_pref_wifi_bssid"
+            android:dependency="@string/sp_use_bssid_filter"
+            android:title="Wi-Fi BSSID"
+            android:summary="Установить одобренный BSSID WiFi-маршрутизатора."
+            android:dialogTitle="Введите BSSID в формате (00:00:00:00:00:00)"
+            android:defaultValue="00:00:00:00:00:00"/>
+
+    </PreferenceCategory>
+    <PreferenceCategory
+        android:title="Управление базой данных">
+        <CheckBoxPreference
+            android:key="@string/sp_all_db_remove"
+            android:title="Очистить все"
+            android:summary="Обнулить все текущие настройки и удалить все накопленные данные." />
     </PreferenceCategory>
 
 </PreferenceScreen>

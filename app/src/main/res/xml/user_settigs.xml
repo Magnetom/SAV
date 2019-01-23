@@ -3,27 +3,28 @@
     <PreferenceCategory
         android:title="О программе">
         <Preference
-            android:title="Название: «Учет ходок» - v1.13"
+            android:title="Название"
+            android:summary="Учет рейсов"
+            android:selectable="false"/>
+
+        <Preference
+            android:title="Версия"
+            android:summary="1.15.01"
             android:selectable="false"/>
     </PreferenceCategory>
 
     <PreferenceCategory
         android:title="Общие настройки">
         <CheckBoxPreference
-            android:key="use_vibro"
-            android:title="Разрешить вибро"
-            android:summary="Разрешает/запрещает вибро-оповещение после каждой успешной отметки." />
-        <!--
-        <Preference
-            android:title="divider"
-            android:selectable="false"
-            android:layout="@layout/preference_divider"/>-->
+            android:key="@string/sp_use_vibration"
+            android:summary="Разрешает/запрещает вибро-оповещение после каждой успешной отметки."
+            android:title="Разрешить вибро" />
         <CheckBoxPreference
-            android:key="use_music"
+            android:key="@string/sp_use_music"
             android:title="Разрешить аудио"
             android:summary="Разрешает/запрещает аудио-оповещение после каждой успешной отметки." />
         <CheckBoxPreference
-            android:key="use_screen_wakeup"
+            android:key="@string/sp_use_screen_wakeup"
             android:title="Разрешить пробуждение экрана"
             android:summary="Разрешает/запрещает пробуждение (свечение) экрана после каждой успешной отметки." />
     </PreferenceCategory>
@@ -31,25 +32,45 @@
     <PreferenceCategory
         android:title="Всплывающие сообщения">
         <CheckBoxPreference
-            android:key="use_popup_info"
+            android:key="@string/sp_use_popup_info"
             android:title="Информационные"
             android:summary="Требуется ли выводить всплывающие информационные сообщения." />
         <CheckBoxPreference
-            android:key="use_popup_warn"
+            android:key="@string/sp_use_popup_warn"
             android:title="Предупреждения"
             android:summary="Требуется ли выводить всплывающие предупреждения." />
         <CheckBoxPreference
-            android:key="use_popup_error"
+            android:key="@string/sp_use_popup_error"
             android:title="Об ошибках"
             android:summary="Требуется ли выводить всплывающие сообщения об ошибках." />
     </PreferenceCategory>
 
 
+    <PreferenceCategory android:title="Отладочный лог событий">
+
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="@string/sp_use_debug_log"
+            android:title="Использование"
+            android:summary="Включение/отключение логирования событий."/>
+        <EditTextPreference
+            android:dependency="@string/sp_use_debug_log"
+            android:key="@string/sp_debug_log_max_lines"
+            android:singleLine="true"
+            android:inputType="numberDecimal"
+            android:defaultValue="1000"
+            android:digits="0123456789"
+            android:maxLength="5"
+            android:dialogTitle="Введите значение от 1 до 9999."
+            android:title="Количество строк"
+            android:summary="Ограничить количество событий этим значением."/>
+    </PreferenceCategory>
+
     <PreferenceCategory
         android:title="Управление базой данных">
     <CheckBoxPreference
-        android:key="all_db_remove"
-        android:title="Очистить ходки"
-        android:summary="Очистить все ходки за текущую дату." />
+        android:key="@string/sp_all_db_remove"
+        android:title="Очистить рейсы"
+        android:summary="Очистить все рейсы за текущую дату." />
     </PreferenceCategory>
 </PreferenceScreen>

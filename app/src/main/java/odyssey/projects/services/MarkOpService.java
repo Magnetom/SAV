@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.sqlite.SQLiteException;
 import android.net.ConnectivityManager;
+import android.net.Network;
 import android.net.NetworkInfo;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -15,15 +16,10 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.util.Log;
 
-import com.android.volley.NoConnectionError;
-import com.android.volley.RequestQueue;
-import com.android.volley.ServerError;
-import com.android.volley.TimeoutError;
-import com.android.volley.toolbox.Volley;
+import com.android.volley.*;
+import com.android.volley.toolbox.*;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import org.json.*;
 
 import odyssey.projects.callbacks.CallbacksProvider;
 import odyssey.projects.callbacks.LongOpCallback;
@@ -34,18 +30,29 @@ import odyssey.projects.sav.driver.VolleyWrapper;
 import odyssey.projects.utils.DebugUtils;
 import odyssey.projects.utils.Noise;
 
-import static odyssey.projects.utils.WebUtils.getWifiBSSID;
-import static odyssey.projects.utils.WebUtils.isReachableByPing_dummy;
-import static odyssey.projects.utils.WebUtils.isWiFiNetwork;
+
+import static odyssey.projects.utils.network.General.isReachableByPing_dummy;
+import static odyssey.projects.utils.network.wifi.Wifi.disableWifi;
+import static odyssey.projects.utils.network.wifi.Wifi.isWifiEnabled;
 
 public final class MarkOpService extends Service {
 
     public static final String TAG = "MARK_SERVICE";
 
+    /* Основные маркеры ответов сервера. */
+    private static final String SRV_MARKER_POSTPONE     = "postpone";
+    private static final String SRV_MARKER_BLOCKED      = "blocked";
+    private static final String SRV_MARKER_DETAILS      = "details";
+    private static final String SRV_MARKER_ERROR        = "error";
+    private static final String SRV_MARKER_STATUS       = "status";
+    private static final String SRV_MARKER_DELAY        = "delay";
+    private static final String SRV_MARKER_TODAY_MARKS  = "today_marks";
+
     /* Опеределие секунд. */
     public static final int SECONDS_1   = 1000;          // Одна секунда в миллисекундах.
     public static final int SECONDS_5   = 5*SECONDS_1;
     public static final int SECONDS_10  = 10*SECONDS_1;
+    public static final int SECONDS_15  = 15*SECONDS_1;
     public static final int SECONDS_30  = 30*SECONDS_1;
     /* Опеределие минут. */
     public static final int MINUTES_1  = 60*SECONDS_1;  // Одна минута в миллисекундах.
@@ -53,6 +60,8 @@ public final class MarkOpService extends Service {
     public static final int MINUTES_10 = 10*MINUTES_1;
 
     /* Блок основных таймаутов сервиса отметок. */
+    // Таймаут в случае выключенного модуля WiFi.
+    private static final int TIMEOUT_WIFI_DISABLED         = SECONDS_15;
     // Таймаут в случае отсутствия активного WiFi соединения при попытке отметится.
     private static final int TIMEOUT_WIFI_UNAVAILABLE   = SECONDS_30;
     // Таймаут в случае отсутствия сервера в сети (сбой пинга ip-адреса сервера).
@@ -78,12 +87,14 @@ public final class MarkOpService extends Service {
         NO_INIT, IDLE, ACTIVATED, CONNECTING, CONNECTED, FAIL, POSTPONE, STOPPED, BLOCKED
     }
 
+    public enum WiFiStatus {
+        ENABLED, DISABLED
+    }
+
     private StatusEnum Status;
     private boolean isStopRequested;
     private Handler queueHandler;
     private RequestQueue requestQueue;
-
-    private LocalSettings settings;
 
     // Заблокирована ли возможность отмечаться на сервере. Это необходимо для обеспечения необходимой паузы
     // между последовательными отметками.
@@ -94,16 +105,24 @@ public final class MarkOpService extends Service {
     // Транспортное средство, отметки о котором передаются в настоящий момент.
     private String Vehicle;
 
-    // Разрешенный SSID адрес маршрутизатора. Считывается из локальных настроек при каждом запуске менеджера.
+    // Использование фильтра по SSID.
+    private boolean useSSIDFilter;
+    // Разрешенное SSID имя WiFi сети. Считывается из локальных настроек при каждом запуске менеджера.
     private String AllowedSSID;
+
+    // Использование фильтра по BSSID.
+    private boolean useBSSIDFilter;
+    // Разрешенный BSSID адрес маршрутизатора. Считывается из локальных настроек при каждом запуске менеджера.
+    private String AllowedBSSID;
+
+    // Статус WiFi модуля перед запуском отметки. Если модуль был выключен, то после отметки приложение также его выключит.
+    private WifiNetworkLastState wifiLastState;
 
     // Адрес или доменное имя удаленного сервера.
     private String ServerAddress;
 
     // Статус, который удаленный сервер присвоил текущей попытке клиента отметится.
     private String srvResponseStatus;
-
-    private BroadcastReceiver receiver;
 
     private PowerManager.WakeLock serviceWakeLock;
 
@@ -122,6 +141,8 @@ public final class MarkOpService extends Service {
         Status = StatusEnum.NO_INIT;
         srvResponseStatus = "unknown";
 
+        wifiLastState = new WifiNetworkLastState(WiFiStatus.DISABLED, -1);
+
         HandlerThread queueThreadHandler = new HandlerThread("REMOTE_MARKER_SERVICE_THREAD", android.os.Process.THREAD_PRIORITY_BACKGROUND);
         // Запускаем поток.
         queueThreadHandler.start();
@@ -139,13 +160,25 @@ public final class MarkOpService extends Service {
         requestQueue = Volley.newRequestQueue(context);
         requestQueue.getCache().clear();
 
-        settings = LocalSettings.getInstance(context);
-
-        registerBroadcast();
+        LocalSettings settings = LocalSettings.getInstance(context);
 
         // Отсылаем отчет в главное активити.
         sendStatusReport(StatusEnum.NO_INIT);
         Log.i(TAG, "MarkManager was init successfully.");
+    }
+
+    private final class WifiNetworkLastState{
+        public WiFiStatus status;
+        public int networkId;
+
+        public WifiNetworkLastState(WiFiStatus status, int networkId) {this.status = status; this.networkId = networkId;}
+
+        public WiFiStatus getStatus(){return status;}
+        public int getNetworkId()    {return networkId;}
+
+        public void setStatus    (WiFiStatus status) {this.status = status;}
+        public void setNetworkId (int networkId)     {this.networkId = networkId;}
+
     }
 
     /* Основной обрботчик сообщений. */
@@ -181,98 +214,150 @@ public final class MarkOpService extends Service {
 
                     final Context context = (Context)msg.obj;
 
-                    // Текущая активная сеть WiFi?
-                    if (isWiFiNetwork(context)){
-                        Log.i(TAG, "WiFi network is active.");
+                    // Проверяется статус WiFi модуля: ВКЛЮЧЕН или ВЫКЛЮЧЕН.
+                    if (isWifiEnabled(context)) {
 
-                        // MAC-адрес WiFi сети. Здесь можно сделать ее проверку.
-                        String real_ssid = getWifiBSSID(context);
+                        // Текущая активная сеть WiFi?
+                        if (WifiHelper.isWiFiNetwork(context)) {
+                            Log.i(TAG, "WiFi network is active.");
+
+                            //////////////////////////////////
+                            // SSID фильтрация (имя сети).  //
+                            //////////////////////////////////
+
+                            // Получаем имя Wi-Fi сети. Очищаем его от лишних символов и знаокв ковычек.
+                            //final String real_SSID = Objects.requireNonNull(WifiHelper.getWifiSSID(context)).trim().replace("\"", "");
+                            final String real_SSID = WifiHelper.trimQuotes(WifiHelper.getWifiSSID(context));
+
+                            // Проврека фильтра по имени WiFi сети.
+                            if (useSSIDFilter) {
+                                Log.i(TAG, "WiFi SSID check is enabled. Doing it ...");
+
+                                // Если разрешенный не соответствует реальному, то завершаем попытку отметки.
+                                if (!AllowedSSID.equalsIgnoreCase(real_SSID)) {
+
+                                    Log.i(TAG, "Current WiFi SSID " + real_SSID + " is not allowed by setting file!");
+                                    Log.i(TAG, "Waiting for another WiFi network... Postpone " + TIMEOUT_WIFI_SSID_CHK_FAILED / SECONDS_1 + " sec. Change status to: {ACTIVATED}");
+                                    DebugOut.generalPrintInfo(context, "SSID имя {" + real_SSID + "} текущего WiFi соединения не одобрено настройками приложения. Отметка отложена на " + TIMEOUT_WIFI_SSID_CHK_FAILED / SECONDS_1 + " секунд.", TAG);
+
+                                    // Инициируем соединение с определенной WiFi сетью для работы приложения.
+                                    triggerConnectToApplicationWiFi();
+
+                                    // Проверим доступность нужной нам сети через несколько секунд.
+                                    queueHandler.sendMessageDelayed(Message.obtain(msg), TIMEOUT_WIFI_SSID_CHK_FAILED);
+                                    sendStatusReport(StatusEnum.ACTIVATED);
+
+                                    return;
+                                }
+                                {
+                                    Log.i(TAG, "Ok, SSID " + real_SSID + " is allowed.");
+                                }
+                            }
+
+                            ////////////////////////////////////////
+                            // BSSID фильтрация (mac-адрес сети). //
+                            ////////////////////////////////////////
+
+                            // MAC-адрес WiFi сети. Здесь можно сделать ее проверку.
+                            final String real_BSSID = WifiHelper.getWifiBSSID(context);
 
                         // Проврека WiFi SSID, если установлено в натройках.
                         if (useSSIDFilter){
 
                             Log.i(TAG, "WiFi SSID check is enabled. Doing it ...");
 
-                            // Если разрешенный не соответствует реальному, то завершаем попытку отметки.
-                            if (!AllowedSSID.equalsIgnoreCase(real_ssid)){
-                                Log.i(TAG, "Current WiFi SSID "+real_ssid+" is not allowed by setting file!");
+                                // Если разрешенный не соответствует реальному, то завершаем попытку отметки.
+                                if (!AllowedBSSID.equalsIgnoreCase(real_BSSID)) {
+                                    Log.i(TAG, "Current WiFi BSSID " + real_BSSID + " is not allowed by setting file!");
+                                    Log.i(TAG, "Waiting for another WiFi router... Postpone " + TIMEOUT_WIFI_BSSID_CHK_FAILED / SECONDS_1 + " sec. Change status to: {ACTIVATED}");
+                                    DebugOut.generalPrintInfo(context, "BSSID текущего WiFi роутера " + real_BSSID + " не одобрено настройками приложения. Отметка отложена на " + TIMEOUT_WIFI_BSSID_CHK_FAILED / SECONDS_1 + " секунд.", TAG);
 
-                                // Проверим доступность нужной нам сети через несколько секунд.
-                                queueHandler.sendMessageDelayed(Message.obtain(msg), SECONDS_30);
-                                sendStatusReport(StatusEnum.ACTIVATED);
-                                Log.i(TAG, "Waiting for another WiFi... Postpone 30 sec. Change status to: {ACTIVATED}");
-                                return;
-                            } else {
-                                Log.i(TAG, "Ok, SSID "+real_ssid+" is allowed.");
+                                    // Инициируем соединение с определенной WiFi сетью для работы приложения.
+                                    triggerConnectToApplicationWiFi();
+
+                                    // Проверим доступность нужной нам сети через несколько секунд.
+                                    queueHandler.sendMessageDelayed(Message.obtain(msg), TIMEOUT_WIFI_BSSID_CHK_FAILED);
+                                    sendStatusReport(StatusEnum.ACTIVATED);
+
+                                    return;
+                                } else {
+                                    Log.i(TAG, "Ok, BSSID " + real_BSSID + " is allowed.");
+                                }
                             }
-                        }
-                        Log.i(TAG, "Connecting to the server "+ServerAddress+" ...");
 
-                        // Ок, сеть подключена.
-                        // Теперь проверяем связь с сервером. Для начала - пингуем его.
-                        // ToDo: Выяснить, почему временами не корректно работает функция isReachableByPing ???
-                        // ToDo: То и дело возвращает FALSE в одних и тех же обстоятельствах (проявлялось на разных телефонах).
-                        // ToDo: Пришлось временно использовать функцию-заглушку - isReachableByPing_dummy.
-                        if (isReachableByPing_dummy(ServerAddress)){
+                            ///////////////////////////////////
+                            // Проверка доступности сервера. //
+                            ///////////////////////////////////
 
-                            Log.i(TAG, "Ok, server is reachable by ping.");
+                            Log.i(TAG, "Connecting to the server " + ServerAddress + " ...");
+                            // Ок, сеть подключена.
+                            // Теперь проверяем связь с сервером. Для начала - пингуем его.
+                            if (General.isReachableByPing_wifi(getApplicationContext(), ServerAddress)) {
 
-                            // Отчет о статусе.
-                            sendStatusReport(StatusEnum.CONNECTED);
+                                //////////////////////////////////////////////////////////////////////
+                                // Все проверки пройдены, начинается попытка отметиться на сервере. //
+                                //////////////////////////////////////////////////////////////////////
 
-                            final Message msg_copy = Message.obtain(msg);
+                                Log.i(TAG, "Ok, server is reachable by ping.");
 
-                            Log.i(TAG, "Trying do mark on server with script: "+LocalSettings.getInstance(context).getScriptUrl(Settings.MARK_SCRIPT));
+                                // Отчет о статусе.
+                                sendStatusReport(StatusEnum.CONNECTED);
 
-                            // Сервер доступен. Пытаемся выполнить отметку на сервере.
-                            VolleyWrapper.doMark(context, requestQueue, null, Vehicle, new LongOpCallback() {
-                                @Override
-                                public void onSuccess(Object obj, Object param) {
-                                    try {
+                                final Message msg_copy = Message.obtain(msg);
 
-                                        JSONObject jsonObject = ((JSONObject) obj);
+                                Log.i(TAG, "Trying do mark on server with script: " + LocalSettings.getInstance(context).getScriptUrl(Settings.MARK_SCRIPT));
 
-                                        // Получаем статус текущего запроса на сервер.
-                                        String srvResponseStatus = jsonObject.getString("status");
+                                // Сервер доступен. Пытаемся выполнить отметку на сервере.
+                                VolleyWrapper.doMark(context, requestQueue, null, Vehicle, new LongOpCallback() {
+                                    @Override
+                                    public void onSuccess(Object obj, Object param) {
+                                        try {
 
-                                        Log.i(TAG, "Server response was received. Status: "+srvResponseStatus);
+                                            JSONObject jsonObject = ((JSONObject) obj);
 
-                                        // Получаем значение времени задержки перед следующей попыткой отметиться.
-                                        int delay = 0;
-                                        if (jsonObject.has("delay")) delay = jsonObject.getInt("delay");
+                                            // Получаем статус текущего запроса на сервер.
+                                            String srvResponseStatus = jsonObject.getString(SRV_MARKER_STATUS);
 
-                                        // Если значение времени задержки от сервера по каки-либо причинам пришло недостоверное, то пытаемся
-                                        // исправить это и установить время задержки на значение по-умолчанию.
-                                        if (delay <= 0 ) delay = MINUTES_1;
-                                        else
-                                            delay = delay * MINUTES_1; // Время необходимой задержки от сервера мы получаем в секундах. Переводим его в миллисеунды.
+                                            Log.i(TAG, "Server response was received. Status: " + srvResponseStatus);
 
-                                        // При запросе на сервер не произошло никакой ошибки. Также сервер не приостановил
-                                        // отметку данного гос. номера.
-                                        if (!srvResponseStatus.equals("error") && !srvResponseStatus.equals("blocked")){
+                                            // Получаем значение времени задержки перед следующей попыткой отметиться.
+                                            int delay = 0;
+                                            if (jsonObject.has(SRV_MARKER_DELAY))
+                                                delay = jsonObject.getInt(SRV_MARKER_DELAY);
 
-                                            // Если запрос на отметку был отложен сервером, обновляем локальную базу данных.
-                                            if (!srvResponseStatus.equals("postpone")){
-                                                // Получаем список отметок за сегодня.
-                                                JSONArray today_marks  = jsonObject.getJSONArray("today_marks");
+                                            // Если значение времени задержки от сервера по каки-либо причинам пришло недостоверное, то пытаемся
+                                            // исправить это и установить время задержки на значение по-умолчанию.
+                                            if (delay <= 0) delay = MINUTES_1;
+                                            else
+                                                delay = delay * MINUTES_1; // Время необходимой задержки от сервера мы получаем в секундах. Переводим его в миллисеунды.
 
-                                                // Добавляем все сегодняшние отметки, если они имеются, в локальную базу данных.
-                                                for (int ii=0; ii<today_marks.length();ii++){
-                                                    // Создается экземпляр класса для работы с БД.
-                                                    Db db = new Db(context);
-                                                    // С помощью процессора локальной БД записываем все временные метки отметок в БД.
-                                                    try {
-                                                        db.addMark(Vehicle, today_marks.getString(ii));
-                                                    }catch (SQLiteException e){
-                                                        e.printStackTrace();
+                                            // При запросе на сервер не произошло никакой ошибки. Также сервер не приостановил
+                                            // отметку данного гос. номера.
+                                            if (!srvResponseStatus.equals(SRV_MARKER_ERROR) && !srvResponseStatus.equals(SRV_MARKER_BLOCKED)) {
+
+                                                // Если запрос на отметку был отложен сервером, обновляем локальную базу данных.
+                                                if (!srvResponseStatus.equals(SRV_MARKER_POSTPONE)) {
+                                                    // Получаем список отметок за сегодня.
+                                                    JSONArray today_marks = jsonObject.getJSONArray(SRV_MARKER_TODAY_MARKS);
+
+                                                    // Добавляем все сегодняшние отметки, если они имеются, в локальную базу данных.
+                                                    for (int ii = 0; ii < today_marks.length(); ii++) {
+                                                        // Создается экземпляр класса для работы с БД.
+                                                        Db db = new Db(context);
+                                                        // С помощью процессора локальной БД записываем все временные метки отметок в БД.
+                                                        try {
+                                                            db.addMark(Vehicle, today_marks.getString(ii));
+                                                        } catch (SQLiteException e) {
+                                                            e.printStackTrace();
+                                                        }
                                                     }
-                                                }
 
-                                                // Если набор данных изменился, то уведомляем об этом главную активити.
-                                                if (today_marks.length() > 0) sendDatasetWasChanged();
+                                                    // Если набор данных изменился, то уведомляем об этом главную активити.
+                                                    if (today_marks.length() > 0)
+                                                        sendDatasetWasChanged();
 
-                                                // Отчет о статусе.
-                                                sendStatusReport(StatusEnum.IDLE);
+                                                    // Отчет о статусе.
+                                                    sendStatusReport(StatusEnum.IDLE);
 
                                                 boolean useVibro = settings.getBoolean(LocalSettings.SP_USE_VIBRO);
                                                 boolean useMusic = settings.getBoolean(LocalSettings.SP_USE_MUSIC);
@@ -295,37 +380,38 @@ public final class MarkOpService extends Service {
                                                 DebugUtils.toastPrintInfo(context,"Отметка невозможна еще "+delay/MINUTES_1+" мин.", TAG);
                                             }
 
-                                            // Взводим курок заново ...
-                                            queueHandler.sendMessageDelayed(Message.obtain(msg_copy), delay);
+                                                // Взводим курок заново ...
+                                                postponeNextMarkAttempt(context, msg_copy, delay, false, true);
 
-                                        } else { // Ошибка на сервере или клиенту запрещено отмечаться (возможность отметок приостановлена).
+                                            } else { // Ошибка на сервере или клиенту запрещено отмечаться (возможность отметок приостановлена).
 
-                                            // Сервер вернул статус ошибки! Обрабатываем ее.
-                                            if (srvResponseStatus.equals("error")){
+                                                // Сервер вернул статус ошибки! Обрабатываем ее.
+                                                if (srvResponseStatus.equals(SRV_MARKER_ERROR)) {
 
-                                                //DebugUtils.debugPrintErrorStd1(context, TAG);
-                                                DebugUtils.toastPrintError(context, jsonObject.getString("details"), TAG);
+                                                    DebugOut.generalPrintError(context, jsonObject.getString(SRV_MARKER_DETAILS), TAG);
+                                                    DebugOut.generalPrintError(context, "Сервер вернул статус ошибки!\r\nДетали:\r\n" + jsonObject.getString("details") + "\r\nПауза " + TIMEOUT_SERVER_OWN_FATAL / SECONDS_1 + " сек.", TAG);
+                                                    Log.i(TAG, "Error was detected. Report 1. Status changed to: {FAIL}");
+                                                    Log.i(TAG, "Error was detected. Report 2. Status changed to: {ACTIVATED}");
 
-                                                // Взводим курок заново ..., но ставим максимальный временной интервал на случай исправления ошибок на сервере.
-                                                queueHandler.sendMessageDelayed(Message.obtain(msg_copy), TIMEOUT_SERVER_OWN_FATAL);
+                                                    // Взводим курок заново ..., но ставим максимальный временной интервал на случай исправления ошибок на сервере.
+                                                    postponeNextMarkAttempt(context, msg_copy, TIMEOUT_SERVER_OWN_FATAL, false, false);
 
-                                                DebugUtils.toastPrintError(context,"Сервер вернул статус ошибки!\r\nПауза "+TIMEOUT_SERVER_OWN_FATAL/SECONDS_1+" сек.", TAG);
+                                                    // Последовательно информируем о дву статусах. Статус возникшей ошибки FAIl система визуализации
+                                                    // задержит на некоторое время, а затем сменит на статус ACTIVATED.
+                                                    // Отчет о статусе.
+                                                    sendStatusReport(StatusEnum.FAIL);
+                                                    // Отчет о статусе.
+                                                    sendStatusReport(StatusEnum.ACTIVATED);
+                                                }
 
-                                                // Последовательно информируем о дву статусах. Статус возникшей ошибки FAIl система визуализации
-                                                // задержит на некоторое время, а затем сменит на статус ACTIVATED.
-                                                // Отчет о статусе.
-                                                sendStatusReport(StatusEnum.FAIL);
-                                                // Отчет о статусе.
-                                                sendStatusReport(StatusEnum.ACTIVATED);
-                                                Log.i(TAG, "Error was detected. Report 1. Status changed to: {FAIL}");
-                                                Log.i(TAG, "Error was detected. Report 2. Status changed to: {ACTIVATED}");
-                                            }
+                                                // Сервер сообщил, что отметка данного гос. номера временно приостановлена.
+                                                // Останавливаем попытки отметится.
+                                                if (srvResponseStatus.equals(SRV_MARKER_BLOCKED)) {
+                                                    DebugOut.generalPrintWarning(context, "Возможность отметок для " + Vehicle + " заблокирована сервером на " + delay / MINUTES_1 + " мин.", TAG);
+                                                    Log.i(TAG, "Warning: mark ability was disabled by the server! Status changed to: {ACTIVATED}");
 
-                                            // Сервер сообщил, что отметка данного гос. номера временно приостановлена.
-                                            // Останавливаем попытки отметится.
-                                            if (srvResponseStatus.equals("blocked")) {
-                                                // Отчет о статусе.
-                                                sendStatusReport(StatusEnum.BLOCKED);
+                                                    // Отчет о статусе.
+                                                    sendStatusReport(StatusEnum.BLOCKED);
 
                                                 // Взводим курок заново ...
                                                 queueHandler.sendMessageDelayed(Message.obtain(msg_copy), delay);
@@ -343,63 +429,194 @@ public final class MarkOpService extends Service {
                                     }
                                 }
 
-                                @Override
-                                public void onError(Object obj) {
+                                    @Override
+                                    public void onError(Object obj) {
 
-                                    // Таймаут соединения с приложением сервера на порту 80. WiFi сеть активна. Сервер доступен.
-                                    if ( (obj instanceof NoConnectionError) || (obj instanceof TimeoutError) ){
-                                        // Удаляем из очереди все имеющиеся сообщения, если таковые имеются. Это деалется потому, что при создании запроса
-                                        // библеотека Volley делает несколько попыток соединиться и этот callback может быть вызван несколько раз через
-                                        // определенный таймаут. Чобы исклчить из очереди несколько MSG_MARK сообщений, очищем предыдущие имеющиеся в очереди.
-                                        queueHandler.removeCallbacksAndMessages(null);
+                                        // Таймаут соединения с приложением сервера на порту 80. WiFi сеть активна. Сервер доступен.
+                                        if ((obj instanceof NoConnectionError) || (obj instanceof TimeoutError)) {
 
-                                        queueHandler.sendMessageDelayed(Message.obtain(msg_copy), TIMEOUT_SERVER_80_TIMEOUT);
-                                        sendStatusReport(StatusEnum.ACTIVATED);
-                                        DebugUtils.toastPrintWarning(context,"Сервер обнаружен, но http-служба недоступна на порту 80!\r\nПауза "+TIMEOUT_SERVER_80_TIMEOUT/SECONDS_1+" сек.", TAG);
-                                        Log.i(TAG, "Warning: no activity on server port 80! Postpone "+TIMEOUT_SERVER_80_TIMEOUT/SECONDS_1+" sec. Change status to: {ACTIVATED}");
+                                            DebugOut.generalPrintWarning(context, "Сервер обнаружен, но http-служба недоступна на порту 80!\r\nПауза " + TIMEOUT_SERVER_80_TIMEOUT / SECONDS_1 + " сек.", TAG);
+                                            Log.i(TAG, "Warning: no activity on server port 80! Postpone " + TIMEOUT_SERVER_80_TIMEOUT / SECONDS_1 + " sec. Change status to: {ACTIVATED}");
+
+                                            // Удаляем из очереди все имеющиеся сообщения, если таковые имеются. Это деалется потому, что при создании запроса
+                                            // библеотека Volley делает несколько попыток соединиться и этот callback может быть вызван несколько раз через
+                                            // определенный таймаут. Чобы исклчить из очереди несколько MSG_MARK сообщений, очищем предыдущие имеющиеся в очереди.
+                                            postponeNextMarkAttempt(context, msg_copy, TIMEOUT_SERVER_80_TIMEOUT, true, false);
+
+                                            sendStatusReport(StatusEnum.ACTIVATED);
+                                            return;
+                                        }
+                                        if (obj instanceof ServerError) {
+                                            DebugOut.generalPrintError(context, "На сервере возникли неполадки! Обратитесь к администратору.\r\nПауза "+TIMEOUT_SERVER_GENERAL_ERROR / SECONDS_1+" сек.\r\nПодробнее:\r\n" + obj.toString(), TAG);
+                                            Log.i(TAG, "Warning: errors on the server was occurred! Change status to: {ACTIVATED}");
+
+                                            postponeNextMarkAttempt(context, msg_copy, TIMEOUT_SERVER_GENERAL_ERROR, true, false);
+
+                                            sendStatusReport(StatusEnum.ACTIVATED);
+                                            return;
+                                        }
+                                        ///////////////////////////////
+                                        // Прочие ошибки соединения. //
+                                        ///////////////////////////////
+                                        DebugOut.debugPrintVolleyError(context, obj, TAG);
+                                        DebugOut.generalPrintError(context, "Неизвестная ошибка коммуникации с сервером! Отмена всех задач. Подробности:\r\n" + ((obj != null) ? obj.toString() : "unknown"), TAG);
+
+                                        // Взводим курок заново ...
+                                        postponeNextMarkAttempt(context, msg_copy, TIMEOUT_UNKNOWN_SERVER_ERROR, true, false);
+
                                         return;
                                     }
-                                    if (obj instanceof ServerError){
-                                        queueHandler.removeCallbacksAndMessages(null);
-                                        sendStatusReport(StatusEnum.STOPPED);
-                                        DebugUtils.toastPrintError(context,"На сервере возникли неполадки! Обратитесь к администратору.", TAG);
-                                        Log.i(TAG, "Warning: errors on the server was occurred! Change status to: {STOPPED}");
-                                        return;
-                                    }
-                                    // Прочие ошибки соединения.
-                                    DebugUtils.debugPrintVolleyError(context, obj, TAG);
-                                    DebugUtils.toastPrintError(context,"Неизвестная ошибка коммуникации с сервером! Отмена всех задач. Подробности:\r\n"+((obj!=null)?obj.toString():"unknown"), TAG);
-                                    recoverAfterFail();
-                                }
-                            });
-                        } else{ // Сервер не доступен!
+                                });
+                            } else { // Сервер не доступен!
+
+                                DebugOut.generalPrintWarning(context, "Сервер "+ServerAddress+" в сети не обнаружен!\r\nПауза " + TIMEOUT_SERVER_UNREACHABLE / SECONDS_1 + " сек.", TAG);
+                                Log.i(TAG, "Warning: server is unreachable! Postpone " + TIMEOUT_SERVER_UNREACHABLE / SECONDS_1 + " sec. Change status to: {ACTIVATED}");
+
+                                // Проверим доступность сети через несколько секунд.
+                                postponeNextMarkAttempt(context, msg, TIMEOUT_SERVER_UNREACHABLE, false, false);
+
+                                sendStatusReport(StatusEnum.ACTIVATED);
+                            }
+                        } else { /* Нет активных WiFi подключений! */
+                            DebugOut.generalPrintWarning(context, "Активная WiFi сеть не обнаружена.\r\nПауза " + TIMEOUT_WIFI_UNAVAILABLE / SECONDS_1 + " сек.", TAG);
+                            Log.i(TAG, "Warning: WiFi network is not active! Postpone " + TIMEOUT_WIFI_UNAVAILABLE / SECONDS_1 + " sec. Change status to: {ACTIVATED}");
+
+                            // Инициируем соединение с определенной WiFi сетью для работы приложения.
+                            triggerConnectToApplicationWiFi();
+
                             // Проверим доступность сети через несколько секунд.
-                            queueHandler.sendMessageDelayed(Message.obtain(msg), TIMEOUT_SERVER_UNREACHABLE);
+                            postponeNextMarkAttempt(context, msg, TIMEOUT_WIFI_UNAVAILABLE, false, false);
+
                             sendStatusReport(StatusEnum.ACTIVATED);
-                            DebugUtils.toastPrintWarning(context,"Сервер в сети не обнаружен!\r\nПауза "+TIMEOUT_SERVER_UNREACHABLE/SECONDS_1+" сек.", TAG);
-                            Log.i(TAG, "Warning: server is unreachable! Postpone "+TIMEOUT_SERVER_UNREACHABLE/SECONDS_1+" sec. Change status to: {ACTIVATED}");
                         }
-                    } else { // Сеть WiFi не активна!
-                        // Проверим доступность сети через несколько секунд.
-                        queueHandler.sendMessageDelayed(Message.obtain(msg), TIMEOUT_WIFI_UNAVAILABLE);
+                    } else { /* Модуль WiFi отключен! */
+
+                        DebugOut.generalPrintWarning(context, "В данный момент модуль WiFi отключен. Включаем модуль ...\r\nПауза " + TIMEOUT_WIFI_DISABLED / SECONDS_1 + " сек.", TAG);
+                        Log.i(TAG, "Warning: WiFi is disabled! Try do ReEnabled it. Postpone " + TIMEOUT_WIFI_DISABLED / SECONDS_1 + " sec. Change status to: {ACTIVATED}");
+
+                        // Если потребность приложения в WiFi подключени к предопределенной WiFi сети
+                        // не прерывает текущее WiFi подключение пользователя, то по окончанию отметки выключаем
+                        // модуль WiFi.
+                        wifiLastState = new WifiNetworkLastState(WiFiStatus.DISABLED, -1);
+
+                        // Инициируем соединение с определенной WiFi сетью для работы приложения.
+                        triggerConnectToApplicationWiFi();
+
+                        // Проверим статус модуля WiFi через некоторое время.
+                        queueHandler.sendMessageDelayed(Message.obtain(msg), TIMEOUT_WIFI_DISABLED);
+
                         sendStatusReport(StatusEnum.ACTIVATED);
-                        DebugUtils.toastPrintInfo(context,"Активная WiFi сеть не обнаружена.\r\nПауза "+TIMEOUT_WIFI_UNAVAILABLE/SECONDS_1+" сек.", TAG);
-                        Log.i(TAG, "Warning: WiFi network is not active! Postpone "+TIMEOUT_WIFI_UNAVAILABLE/SECONDS_1+" sec. Change status to: {ACTIVATED}");
                     }
                 }
                 break;
         }
     }
 
-    private void recoverAfterFail(){
-        /**/
-        stopSelf();
-        sendStatusReport(StatusEnum.FAIL);
-        sendStatusReport(StatusEnum.STOPPED);
-        Log.i(TAG, "Recover after fail. Report 1. Status changed to: {FAIL}");
-        Log.i(TAG, "Recover after fail. Report 2. Status changed to: {STOPPED}");
+    // Откладывает очередную последующую попытку отметки на указанное время.
+    private void postponeNextMarkAttempt(final   Context context,
+                                         final   Message msg,
+                                         int     timeout,
+                                         boolean clearQueue,
+                                         boolean wifiOriginalState){
+
+        // Возвращаем WiFi модуль в исходное состояние (до начала очередной отметки).
+        if ( wifiOriginalState ) {
+            restoreWifiModuleState();
+        }
+        // Чистится очередь сообщений, если это необходимо.
+        if (clearQueue) queueHandler.removeCallbacksAndMessages(null);
+        // Делается копия сообщения и его обработка откладывается на указанное время.
+        queueHandler.sendMessageDelayed(Message.obtain(msg), timeout);
     }
 
+    // Восстановить исходное состояние модуля WiFi и последнего его подключения, которо было до начала отметки приложением.
+    private void restoreWifiModuleState(){
+        if (wifiLastState.getStatus() == WiFiStatus.DISABLED){
+            disableWifi(getApplicationContext());
+            // Обнуляем значение предыдущего состояние сети.
+            //wifiLastState.setStatus(WiFiStatus.ENABLED);
+            DebugOut.generalPrintInfo(getApplicationContext(), "Модуль WiFi переведен в исходное состояние - ВЫКЛЮЧЕН.", TAG);
+        } else {
+
+        }
+    }
+
+    private void triggerConnectToApplicationWiFi(){
+
+        String WifiSSID = null;
+        if (SettingsCache.USE_SSID_FILTER) WifiSSID = SettingsCache.ALLOWED_WIFI_SSID;
+
+        String WifiBSSID = null;
+        if (SettingsCache.USE_BSSID_FILTER) WifiBSSID = SettingsCache.ALLOWED_WIFI_BSSID;
+
+        String extraMessage = "";
+        if (WifiSSID  != null) extraMessage += "\r\nSSID: "  + WifiSSID;
+        if (WifiBSSID != null) extraMessage += "\r\nBSSID: " + WifiBSSID;
+        if (WifiSSID == null && WifiBSSID == null) extraMessage = "\r\n - любая WiFi сеть.";
+
+        DebugOut.generalPrintInfo(getApplicationContext(), "Активируется соединение с предопределенной WiFi сетью:"+extraMessage, TAG);
+
+        // Запускаем слушателя, настроенного на сообщение об успешном подключении модуля WiFi к искомой сети.
+        reloadApplicationWifiConnectedListener();
+
+        // Включаем модуль WiFi и подключаемся к предопределенной WiFi сети.
+        Wifi.connectToWifi(getApplicationContext(), WifiSSID, WifiBSSID);
+    }
+
+    private BroadcastReceiver wifiConnectedReceiver = null;
+    // Регистрируется приемник широковещательных сообщений о подключении к нужной WiFi-сети.
+    private void reloadApplicationWifiConnectedListener(){
+
+        IntentFilter filters = new IntentFilter();
+        filters.addAction("android.net.conn.CONNECTIVITY_CHANGE");
+
+        // Удаляем предыдущий приемник, если таковой имеется.
+        if (wifiConnectedReceiver != null){
+            getApplicationContext().unregisterReceiver(wifiConnectedReceiver);
+            wifiConnectedReceiver = null;
+        }
+        // Настраивае приемник заново.
+        getApplicationContext().registerReceiver(wifiConnectedReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                ConnectivityManager connMgr = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+                NetworkInfo networkInfo = connMgr.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+                // Проверка условий.
+                if (networkInfo == null || networkInfo.getExtraInfo() == null) return;
+                // Если WiFi соединение не установлено, завершаем работу.
+                if ( !networkInfo.isConnected() ) return;
+
+                boolean isAllowedSSID  = true;
+                boolean isAllowedBSSID = true;
+
+                // Если требуется фильтрация по SSID имени, то делаем это.
+                if (SettingsCache.USE_SSID_FILTER){
+                    isAllowedSSID = WifiHelper.areSsidEqual(networkInfo.getExtraInfo(), SettingsCache.ALLOWED_WIFI_SSID);
+                }
+
+                // Если требуется фильтрация по BSSID роутера, то делаем это.
+                if (SettingsCache.USE_BSSID_FILTER){
+                    String BSSID = WifiHelper.getWifiBSSID(context);
+                    if (BSSID != null) {
+                        isAllowedBSSID = BSSID.equalsIgnoreCase(SettingsCache.ALLOWED_WIFI_BSSID);
+                    }
+                }
+
+                if (isAllowedSSID && isAllowedBSSID) {
+
+                    DebugOut.generalPrintInfo(getApplicationContext(), "Искомое подключение найдено:\r\nSSID: "+SettingsCache.ALLOWED_WIFI_SSID+"\r\nBSSID: "+ SettingsCache.ALLOWED_WIFI_BSSID, TAG);
+
+                    // Ускорить отложенное задание на отметку.
+                    boostMarkTask(getApplicationContext(), false);
+                    // Отменяем слушателя.
+                    getApplicationContext().unregisterReceiver(this);
+                    wifiConnectedReceiver = null;
+                }
+            }
+        }, filters);
+    }
+
+    // Сообщить все подписчикам об изменении набора данных отметок.
     private void sendDatasetWasChanged(){
         if (CallbacksProvider.getMarksDatasetCallback() != null){
             CallbacksProvider.getMarksDatasetCallback().changed(true);
@@ -429,8 +646,15 @@ public final class MarkOpService extends Service {
     private boolean stopRequestedPoll(){
         if (isStopRequested){
             isStopRequested = false;
+
+            Log.i(TAG, "Stop request was detected! Status changed to {STOPPED}.");
+            DebugOut.generalPrintInfo(this, "Зафиксирован запрос на остановку сервиса отметок. Сервис остановлен.", TAG);
+
             // Удаляем из очереди все имеющиеся сообщения, если таковые имеются.
             queueHandler.removeCallbacksAndMessages(null);
+            // Возвращаем модуль WiFi в исходное состояние.
+            restoreWifiModuleState();
+
             // Отчет о статусе.
             sendStatusReport(StatusEnum.STOPPED);
             // Освобождаем ресурсы процессора по обработке потока отметок.
@@ -497,6 +721,11 @@ public final class MarkOpService extends Service {
             return false;
         }
 
+        // Требуется ли фильтр по имени WiFi сети.
+        useSSIDFilter = SettingsCache.USE_SSID_FILTER;
+        // Из локальных настроек считываем разрешенное имя SSID WiFi сети.
+        AllowedSSID = SettingsCache.ALLOWED_WIFI_SSID;
+
         // Требуется ли фильтр по MAC-адресу.
         useSSIDFilter = settings.getBoolean(LocalSettings.SP_USE_SSID_FILTER);
         // Из локальных настроек считываем разрешенный SSID маршрутизатора.
@@ -509,8 +738,13 @@ public final class MarkOpService extends Service {
             sendStatusReport(StatusEnum.STOPPED);
             return false;
         }
+
+        // Обнуляем значение последнего состояния WiFi модуля перед. По-умолчанию - модуль был включен.
+        wifiLastState.setStatus(WiFiStatus.DISABLED);
+        wifiLastState.setNetworkId(-1);
+
         // Запусаем в обработку в потоке первое задание на отметку.
-        kickstartMarkMessage(context);
+        boostMarkTask(context, true);
 
         // Отсылаем отчет в главное активити.
         sendStatusReport(StatusEnum.ACTIVATED);
@@ -518,56 +752,24 @@ public final class MarkOpService extends Service {
         return true;
     }
 
-    private void kickstartMarkMessage(Context context){
-        // Удаляем из очереди все имеющиеся сообщения, если таковые имеются.
-        queueHandler.removeCallbacksAndMessages(null);
-        // Запускаем обработчик запросов (периодические запросы на отметку на сервере).
-        queueHandler.sendMessage(Message.obtain(queueHandler, MSG_MARK, context));
-    }
+    /* Ускорить отложенное задание на отметку, ожидающую благоприятных условий (например, подключенной сети WiFi).
+     * Если указан параметр {inAnyCase = true}, то запуск задания произайдет без дополнительных проверок. */
+    private void boostMarkTask(Context context, boolean inAnyCase){
 
-
-    // Обрабатывает события об изменении статуча подключения к WiFi сети.
-    private void wifiStateChanged(boolean isConnected,Context context){
-        // Если сеть появилась и в очереди сообщений имеются отложенные задания на отметку, пытаемся
+        // Если условия для отметки изменились и в очереди сообщений имеются отложенные задания на отметку, пытаемся
         // форсировать их обработку путем удаления старых и создания новых заданий для выполнения их без задержки.
-        if (    isConnected &&                          // Появилось подключение к сети WiFi.
-                queueHandler.hasMessages(MSG_MARK) &&   // В очереди сообщений есть отложенный запрос на отметку.
-                !srvResponseStatus.equalsIgnoreCase("postpone") && // Это сообщение не было отложено по причине преждевременной попытки отметится.
-                !srvResponseStatus.equalsIgnoreCase("blocked")){   // Это сообщение не было отложено по причине блокировки клиента.
-            // Перезапускаем в обработку в потоке задание на отметку.
-            kickstartMarkMessage(context);
-        }
-    }
+        if (    inAnyCase ||
+                (queueHandler.hasMessages(MSG_MARK) &&                       // В очереди сообщений есть отложенный запрос на отметку.
+                !srvResponseStatus.equalsIgnoreCase(SRV_MARKER_POSTPONE) &&  // Это сообщение не было отложено по причине преждевременной попытки отметится.
+                !srvResponseStatus.equalsIgnoreCase(SRV_MARKER_BLOCKED))){   // Это сообщение не было отложено по причине блокировки клиента.
 
-    // Вспомогательная глобальная переменная-защелка.
-    private boolean connected_latch;
-    // Регистрируется приемник широковещательных сообщений об изменении состояния WiFi-сети (подключена/отключена).
-    private void registerBroadcast(){
-        final IntentFilter filters = new IntentFilter();
-        //filters.addAction("android.net.wifi.WIFI_STATE_CHANGED");
-        //filters.addAction("android.net.wifi.STATE_CHANGE");
-        filters.addAction("android.net.conn.CONNECTIVITY_CHANGE");
-        receiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                ConnectivityManager connMgr = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-                NetworkInfo wifi = connMgr.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
-
-                boolean isConnected = wifi != null && wifi.isConnected();
-
-                if (isConnected && !connected_latch) {
-                    wifiStateChanged(connected_latch = true,context);
-                } else if (!isConnected && connected_latch){
-                    wifiStateChanged(connected_latch = false,context);
-                }
-            }
-        };
-        super.registerReceiver(receiver, filters);
-    }
-
-    private void unregisterBroadcast(){
-        if (receiver != null){
-            super.unregisterReceiver(receiver);
+            // Удаляем из очереди все имеющиеся сообщения, если таковые имеются.
+            queueHandler.removeCallbacksAndMessages(null);
+            // Запускаем обработчик запросов (периодические запросы на отметку на сервере).
+            queueHandler.sendMessage(Message.obtain(queueHandler, MSG_MARK, context));
+            DebugOut.generalPrintInfo(context, "Форсирование текущей отметки.", TAG);
+        } else {
+            DebugOut.generalPrintWarning(context, "Форсирование отметки в настоящий момент невозможно!", TAG);
         }
     }
 
@@ -626,8 +828,7 @@ public final class MarkOpService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        //onServiceDestroy();
-        unregisterBroadcast();
+        DebugOut.generalPrintWarning(getApplicationContext(), "Сервис автоматической отметки автотранспорта остановлен!", TAG);
         stop();
     }
 

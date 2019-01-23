@@ -1,9 +1,36 @@
 <resources>
-    <string name="app_name">Учет ходок</string>
+    <string name="app_name">Учет рейсов</string>
 
     <string name="allowed_symbols_rus">0123456789АВЕКМНОРСТУХ</string>
     <string name="allowed_symbols_eng_rus">ABCEHKMOPSTRUYX0123456789АВЕКМНОРСТУХ</string>
     <string name="allowed_digits">+- 0123456789.</string>
     <string name="allowed_digits_only">0123456789</string>
+
+
+    <!-- LOCAL SETTINGS -->
+    <string name="sp_sw_version">sw_version</string>
+    <string name="sp_sw_name">sw_name</string>
+    <string name="sp_global_enable">global_enable</string>
+    <string name="sp_multi_vehicle_mode">multi_vehicle_enable</string>
+    <string name="sp_vehicle">vehicle</string>
+    <string name="sp_server_address">server_address</string>
+    <string name="sp_use_ssid_filter">use_ssid_filter</string>
+    <string name="sp_use_bssid_filter">use_bssid_filter</string>
+    <string name="sp_pref_wifi_ssid">pref_wifi_ssid</string>
+    <string name="sp_pref_wifi_bssid">pref_wifi_bssid</string>
+    <string name="sp_not_first_join">not_first_join</string>
+    <string name="sp_all_db_remove">all_db_remove</string>
+    <string name="sp_use_vibration">use_vibration</string>
+    <string name="sp_use_music">use_music</string>
+    <string name="sp_use_screen_wakeup">use_screen_wakeup</string>
+    <string name="sp_use_popup_info">use_popup_info</string>
+    <string name="sp_use_popup_warn">use_popup_warn</string>
+    <string name="sp_use_popup_error">use_popup_error</string>
+    <string name="sp_use_debug_log">use_debug_log</string>
+    <string name="sp_debug_log_max_lines">debug_log_max_lines</string>
+    <string name="sp_debug_log_info">debug_log_info</string>
+    <string name="sp_debug_log_warn">debug_log_warn</string>
+    <string name="sp_debug_log_error">debug_log_error</string>
+
 
 </resources>

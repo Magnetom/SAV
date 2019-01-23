@@ -4,10 +4,12 @@ public final class SettingsCache {
 
     public static boolean GLOBAL_ENABLE     = false;
 
-    public static String VEHICLE            = "";
-    public static String SERVER_ADDRESS     = "";
-    public static boolean USE_SSID_FILTER   = true;
-    public static String ALLOWED_WIFI_SSID  = "";
+    public static String  VEHICLE            = "";
+    public static String  SERVER_ADDRESS     = "";
+    public static boolean USE_BSSID_FILTER   = true;
+    public static boolean USE_SSID_FILTER    = true;
+    public static String  ALLOWED_WIFI_BSSID = "";
+    public static String  ALLOWED_WIFI_SSID  = "";
 
     public static boolean USE_VIBRO         = true;
     public static boolean USE_MUSIC         = true;
@@ -17,10 +19,11 @@ public final class SettingsCache {
     public static boolean USE_POPUP_WARN  = true;
     public static boolean USE_POPUP_ERROR = true;
 
-    public static boolean USE_DEBUG_LOG    = false;
-    public static int DEBUG_LOG_MAX_LINES  = 1000;
-    public static boolean DEBUG_LOG_INFO    = false;
-    public static boolean DEBUG_LOG_WARN    = false;
-    public static boolean DEBUG_LOG_ERROR   = false;
+    public static boolean USE_DEBUG_LOG        = false;
+    public static int     DEBUG_LOG_MAX_LINES  = 1000;
+    public static boolean DEBUG_LOG_INFO       = false;
+    public static boolean DEBUG_LOG_WARN       = false;
+    public static boolean DEBUG_LOG_ERROR      = false;
+
 
 }
