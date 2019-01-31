@@ -93,6 +93,14 @@ public class Wifi {
         }
     }
 
+    public static void connectToNetworkId(final Context context, int networkId) {
+        if (networkId < 0) return;
+        WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(WIFI_SERVICE);
+        wifiManager.disconnect();
+        wifiManager.enableNetwork(networkId, true);
+        wifiManager.reconnect();
+    }
+
     private static void _connectToWiFi(final Context context, String wifiName) {
         WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(WIFI_SERVICE);
         WifiConfiguration configuration = new WifiConfiguration();

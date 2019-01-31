@@ -17,9 +17,12 @@ import android.widget.TextView;
 
 import odyssey.projects.callbacks.VehicleSelectedListener;
 import odyssey.projects.db.VehiclesViewer;
+import odyssey.projects.debug.DebugOut;
 import odyssey.projects.utils.Hash;
 
 public class VehicleSelectActivity extends AppCompatActivity {
+
+    private static final String TAG = "VEHICLE_SELECT_ACTIVITY";
 
     private VehiclesViewer vehiclesViewer;
 
@@ -27,6 +30,8 @@ public class VehicleSelectActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_vehicle_select);
+
+        DebugOut.generalPrintInfo(getApplicationContext(), "Запущена активити выбора госномера", TAG);
 
         final Context context = this;
 
@@ -157,5 +162,11 @@ public class VehicleSelectActivity extends AppCompatActivity {
             });
         }
 
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        DebugOut.generalPrintInfo(getApplicationContext(), "Активити выбора госномера закрыто.", TAG);
     }
 }

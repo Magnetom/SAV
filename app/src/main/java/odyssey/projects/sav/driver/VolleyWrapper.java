@@ -37,7 +37,7 @@ public class VolleyWrapper {
         // Здесь будут лежать все параметры с ключами.
         Map<String,String> params = new HashMap<>();
         // Добавляем параметры к запросу.
-        params.put("vehicle_id",  vehicle_id); // Идентификационный гос. номер автомобиля.
+        params.put("vehicle",  vehicle_id); // Идентификационный гос. номер автомобиля.
         if (jsonRequest == null) jsonRequest = new JSONObject();
         jsonRequestT(
                 context,
@@ -67,7 +67,7 @@ public class VolleyWrapper {
             // Добавляется стандартный параметр - ключ безопасности.
             jsonRequest.put("token", Settings.CLIENT_REQUEST_TOKEN);
             // Добавляеся уникальный идентификатор запроса для исключения дублирования записей в БД на стороне сервера.
-            jsonRequest.put("request_id", getStrUid());
+            jsonRequest.put("request", getStrUid());
 
             // Добавляются прочие пользовательские параметры.
             for (String key: params.keySet()){
