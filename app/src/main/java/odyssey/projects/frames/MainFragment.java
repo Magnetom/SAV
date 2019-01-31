@@ -237,6 +237,9 @@ public final class MainFragment extends Fragment {
         getActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                String value = "ОТКЛ.";
+                if (checked) value = "АВТО.";
+                DebugOut.generalPrintInfo(getContext(),"Состояние переключателя ОТКЛ./АВТО. изменено сторонним потоком на:\r\n"+value+".", TAG);
                 mainSwitch.setChecked(checked);
             }
         });
@@ -297,9 +300,11 @@ public final class MainFragment extends Fragment {
                 mainSwitch.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
                 if (mainSwitch.isPressed()){
                     if (!isChecked) {
+                        DebugOut.generalPrintInfo(getContext(),"Переключатель ОТКЛ./АВТО. переключен в состояние:\r\nОТКЛ.", TAG);
                         // Останавливаем менеджер управления отметками.
                         getActivity().stopService(new Intent(getContext(), MarkOpService.class));
                     } else {
+                        DebugOut.generalPrintInfo(getContext(),"Переключатель ОТКЛ./АВТО. переключен в состояние:\r\nАВТО.", TAG);
                         // Запускаем менеджер управления отметками.
                         getActivity().startService(new Intent(getContext(), MarkOpService.class).putExtra(ACTION_TYPE_CMD, MarkOpService.CMD_RUN_MARKS));
                     }

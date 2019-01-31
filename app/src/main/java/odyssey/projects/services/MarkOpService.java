@@ -720,7 +720,7 @@ public final class MarkOpService extends Service {
             markStarted = false;
 
             Log.i(TAG, "Stop request was detected! Status changed to {STOPPED}.");
-            DebugOut.generalPrintInfo(this, "Зарегистрирован запрос на остановку сервиса отметок.\r\nСервис остановлен.", TAG);
+            DebugOut.generalPrintInfo(this, "Зарегистрирован запрос на очистку очереди отметок.\r\nОчередь очищена.", TAG);
 
             // Удаляем из очереди все имеющиеся сообщения, если таковые имеются.
             queueHandler.removeCallbacksAndMessages(null);
