@@ -83,27 +83,29 @@ public class LocalSettings {
             saveBoolean(SP_NOT_FIRST_JOIN, true);
 
             // Применяем настройки по-умолчанию (при первом запуске програмы).
-            saveBoolean(SP_GLOBAL_ENABLE, false);   // Глобальное разрешение работы приложение - ЗАПРЕЩЕНО.
+            saveBoolean(SP_GLOBAL_ENABLE, true);   // Глобальное разрешение работы приложение - ЗАПРЕЩЕНО.
             saveBoolean(SP_USE_BSSID_FILTER, true); // Использовать BSSID-фильтрацию.
             saveBoolean(SP_USE_SSID_FILTER, true);  // Использовать SSID-фильтрацию.
 
-            saveBoolean(SP_USE_VIBRATION, true);     // Использовать виро-оповещение об успешной отметке.
-            saveBoolean(SP_USE_MUSIC, true);         // Использовать аудио-оповещение об успешной отметке.
-            saveBoolean(SP_USE_SCREEN_WAKEUP, true); // Использовать пробуждение экрана после удачной отметки на сервере.
+            saveBoolean(SP_USE_VIBRATION, false);     // Использовать виро-оповещение об успешной отметке.
+            saveBoolean(SP_USE_MUSIC, false);         // Использовать аудио-оповещение об успешной отметке.
+            saveBoolean(SP_USE_SCREEN_WAKEUP, false); // Использовать пробуждение экрана после удачной отметки на сервере.
 
             saveText(SP_ALLOWED_WIFI_BSSID, Settings.ALLOWED_WIFI_DEFAULT_BSSID); // Одобренный BSSID по-умолчанию.
             saveText(SP_ALLOWED_WIFI_SSID,  Settings.ALLOWED_WIFI_DEFAULT_SSID);  // Одобренный SSID по-умолчанию.
             saveText(SP_SERVER_ADDRESS,     Settings.DB_SERVER_DEFAULT_ADDRESS);  // Адрес/имя удаленного сервера.
 
-            saveBoolean(SP_USE_POPUP_INFO,  true); // Использовать всплывающие информационные сообщения.
-            saveBoolean(SP_USE_POPUP_WARN,  true); // Использовать всплывающие предупреждения.
-            saveBoolean(SP_USE_POPUP_ERROR, true); // Использовать всплывающие сообщения об ошибках.
+            saveBoolean(SP_USE_POPUP_INFO,  false); // Использовать всплывающие информационные сообщения.
+            saveBoolean(SP_USE_POPUP_WARN,  false); // Использовать всплывающие предупреждения.
+            saveBoolean(SP_USE_POPUP_ERROR, false); // Использовать всплывающие сообщения об ошибках.
 
-            saveBoolean(SP_USE_DEBUG_LOG, false);     // Использовать логирование отладочной информации в специальный ListView.
+            saveBoolean(SP_USE_DEBUG_LOG, true);     // Использовать логирование отладочной информации в специальный ListView.
             saveBoolean(SP_DEBUG_LOG_INFO, true);
             saveBoolean(SP_DEBUG_LOG_WARN, true);
             saveBoolean(SP_DEBUG_LOG_ERROR, true);
             saveText(SP_DEBUG_LOG_MAX_LINES, "1000"); // Максимальное количество элементов списка оладочного лога событий.
+
+            saveText(LocalSettings.SP_VEHICLE, "РОМА");
         }
     }
 

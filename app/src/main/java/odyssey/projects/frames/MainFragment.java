@@ -1,5 +1,7 @@
 package odyssey.projects.frames;
 
+import android.app.ActivityManager;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
@@ -89,7 +91,9 @@ public final class MainFragment extends Fragment {
         // Устанавливаем иконку статуса отметок по-умолчанию - пусто.
         setStatusIconFromForeignThread(0);
         // Делаем запрос статуса сервиса отметок т.к. сервис работает независимо от приложения.
-        if (getContext()!=null)getContext().startService(new Intent(getContext(), MarkOpService.class).putExtra(ACTION_TYPE_CMD, MarkOpService.CMD_GET_STATUS));
+        startMarkOpService(MarkOpService.CMD_GET_STATUS);
+        // Останавливаем сервис, если он еще продолжает работу после завершения приложения.
+        //stopMarkOpService();
     }
 
     /* Регистрация слушателей. */
@@ -300,13 +304,13 @@ public final class MainFragment extends Fragment {
                 mainSwitch.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
                 if (mainSwitch.isPressed()){
                     if (!isChecked) {
-                        DebugOut.generalPrintInfo(getContext(),"Переключатель ОТКЛ./АВТО. переключен в состояние:\r\nОТКЛ.", TAG);
+                        DebugOut.generalPrintInfo(getContext(),"Переключатель ОТКЛ./АВТО. вручную переключен в состояние:\r\nОТКЛ.", TAG);
                         // Останавливаем менеджер управления отметками.
-                        getActivity().stopService(new Intent(getContext(), MarkOpService.class));
+                        stopMarkOpService();
                     } else {
-                        DebugOut.generalPrintInfo(getContext(),"Переключатель ОТКЛ./АВТО. переключен в состояние:\r\nАВТО.", TAG);
+                        DebugOut.generalPrintInfo(getContext(),"Переключатель ОТКЛ./АВТО. вручную переключен в состояние:\r\nАВТО.", TAG);
                         // Запускаем менеджер управления отметками.
-                        getActivity().startService(new Intent(getContext(), MarkOpService.class).putExtra(ACTION_TYPE_CMD, MarkOpService.CMD_RUN_MARKS));
+                        startMarkOpService(MarkOpService.CMD_RUN_MARKS);
                     }
                 }
             }
@@ -343,12 +347,51 @@ public final class MainFragment extends Fragment {
             DebugOut.generalPrintInfo(getContext(),"Зафиксирована смена госномера на "+vehicle+".", TAG);
 
             // Останавливаем менеджер управления отметками.
-            getActivity().stopService(new Intent(getContext(), MarkOpService.class));
+            stopMarkOpService();
             // Обновляем список отметок для текущего ТС.
             if (marksView!=null) marksView.doUpdate();
         }
         // Обновляем содержимое кнопки.
         updateCurrentVehicleFrame();
+    }
+
+
+    private void startMarkOpService(int param){
+        if (getActivity() != null) {
+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                getActivity().startForegroundService(new Intent(getContext(), MarkOpService.class).putExtra(ACTION_TYPE_CMD, param));
+            } else {
+                getActivity().startService(new Intent(getContext(), MarkOpService.class).putExtra(ACTION_TYPE_CMD, param));
+            }
+        }
+    }
+
+    // Останавливаем менеджер управления отметками.
+    private void stopMarkOpService(){
+        if (getActivity() != null) {
+            // Останавливаем сервис, если он действительно запущен.
+            if (isMyServiceRunning(MarkOpService.class)){
+
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O){
+                    getActivity().startForegroundService(new Intent(getContext(), MarkOpService.class).putExtra(ACTION_TYPE_CMD, MarkOpService.CMD_STOP));
+                } else {
+                    getActivity().startService(new Intent(getContext(), MarkOpService.class).putExtra(ACTION_TYPE_CMD, MarkOpService.CMD_STOP));
+                }
+            }
+        }
+    }
+
+    private boolean isMyServiceRunning(Class<?> serviceClass) {
+        if (getActivity() != null) {
+            ActivityManager manager = (ActivityManager) getActivity().getSystemService(Context.ACTIVITY_SERVICE);
+            for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+                if (serviceClass.getName().equals(service.service.getClassName())) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     @Override
@@ -357,4 +400,10 @@ public final class MainFragment extends Fragment {
         updateCurrentVehicleFrame();
     }
 
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        // Останавливаем сервис, если приложение закрывается.
+        stopMarkOpService();
+    }
 }

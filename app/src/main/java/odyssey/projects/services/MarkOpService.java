@@ -1,11 +1,18 @@
 package odyssey.projects.services;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.sqlite.SQLiteException;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Handler;
@@ -13,6 +20,9 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.PowerManager;
+import android.provider.SyncStateContract;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.TaskStackBuilder;
 import android.util.Log;
 
 import com.android.volley.*;
@@ -82,8 +92,9 @@ public final class MarkOpService extends Service {
     private static final int MSG_MARK    = 1;
     private static final int MSG_UNBLOCK = 2;
 
-    public static final int CMD_GET_STATUS = 1;
-    public static final int CMD_RUN_MARKS  = 2;
+    public static final int CMD_STOP        = -1;
+    public static final int CMD_GET_STATUS  = 1;
+    public static final int CMD_RUN_MARKS   = 2;
 
     public enum StatusEnum {
         NO_INIT, IDLE, ACTIVATED, CONNECTING, CONNECTED, FAIL, POSTPONE, STOPPED, BLOCKED
@@ -138,6 +149,8 @@ public final class MarkOpService extends Service {
 
     /* Инициализация класса */
     private void init (Context context) {
+        DebugOut.generalPrintInfo(context, "Инициализация сервиса автоматического учета рейсов автотранспорта.", TAG);
+
         // Инициализация глобальных переменных.
         markBlocked = false;
         Status = StatusEnum.NO_INIT;
@@ -145,7 +158,8 @@ public final class MarkOpService extends Service {
 
         wifiLastState = new WifiNetworkLastState(WifiStatus.UNKNOWN, -1);
 
-        HandlerThread queueThreadHandler = new HandlerThread("REMOTE_MARKER_SERVICE_THREAD", android.os.Process.THREAD_PRIORITY_BACKGROUND);
+        //HandlerThread queueThreadHandler = new HandlerThread("REMOTE_MARKER_SERVICE_THREAD", android.os.Process.THREAD_PRIORITY_BACKGROUND);
+        HandlerThread queueThreadHandler = new HandlerThread("REMOTE_MARKER_SERVICE_THREAD", android.os.Process.THREAD_PRIORITY_FOREGROUND);
         // Запускаем поток.
         queueThreadHandler.start();
         // Настраиваем обработчик сообщений.
@@ -166,7 +180,112 @@ public final class MarkOpService extends Service {
 
         // Отсылаем отчет в главное активити.
         sendStatusReport(StatusEnum.NO_INIT);
+
         Log.i(TAG, "MarkManager was init successfully.");
+    }
+
+    private void initForeground_tst(){
+
+        int NOTIFICATION_ID = 234;
+
+        Context ctx = getApplicationContext();
+        String CHANNEL_ID = "my_channel_01";
+        Bitmap icon = BitmapFactory.decodeResource(getResources(),R.drawable.favicon);
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(ctx, CHANNEL_ID)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle("Учет рейсов")
+                .setContentText("Служба автоматических отметок запущена.")
+                .setSmallIcon(R.drawable.favicon)
+                .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 128, false))
+                .setOngoing(true);
+
+        startForeground(NOTIFICATION_ID, builder.build());
+    }
+
+    private void initForeground(){
+
+        int NOTIFICATION_ID = 234;
+
+        Context ctx = getApplicationContext();
+
+        NotificationManager notificationManager = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+
+        String CHANNEL_ID = "my_channel_01";
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+
+            CharSequence name = "my_channel";
+            String Description = "This is my channel";
+            int importance = NotificationManager.IMPORTANCE_HIGH;
+            NotificationChannel mChannel = new NotificationChannel(CHANNEL_ID, name, importance);
+            mChannel.setDescription(Description);
+            mChannel.enableLights(true);
+            //mChannel.setLightColor(Color.RED);
+            mChannel.setLightColor(Color.BLUE);
+            mChannel.enableVibration(true);
+            mChannel.setVibrationPattern(new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
+            mChannel.setShowBadge(false);
+            notificationManager.createNotificationChannel(mChannel);
+        }
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(ctx, CHANNEL_ID)
+                .setOngoing(true)
+                .setSmallIcon(R.drawable.favicon)
+                .setLargeIcon(Bitmap.createScaledBitmap(BitmapFactory.decodeResource(getResources(),R.drawable.favicon), 128, 128, false))
+                .setContentTitle("Учет рейсов")
+                .setContentText("Служба автоматических отметок запущена.");
+
+
+        /*
+        Intent resultIntent = new Intent(ctx, MainActivity.class);
+        TaskStackBuilder stackBuilder = TaskStackBuilder.create(ctx);
+        stackBuilder.addParentStack(MainActivity.class);
+        stackBuilder.addNextIntent(resultIntent);
+        PendingIntent resultPendingIntent = stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
+        builder.setContentIntent(resultPendingIntent);
+        */
+
+        Intent notificationIntent = new Intent(this, MainActivity.class);
+        notificationIntent.setAction("ru.odyssey.aura.action.main");
+        //notificationIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        //notificationIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        //notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
+        builder.setContentIntent(pendingIntent);
+
+        //notificationManager.notify(NOTIFICATION_ID, builder.build());
+        startForeground(NOTIFICATION_ID, builder.build());
+    }
+
+    private void initForeground_old(){
+
+
+        /*
+        Intent notificationIntent = new Intent(this, MainActivity.class);
+        notificationIntent.setAction("ru.odyssey.aura.action.main");
+        //notificationIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        //notificationIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        //notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
+        */
+
+        Bitmap icon = BitmapFactory.decodeResource(getResources(),R.drawable.favicon);
+
+
+        Notification notification = new NotificationCompat.Builder(this)
+                .setContentTitle("Учет рейсов")
+                .setTicker("Учет рейсов")
+                //.setContentText("Нажмите, чтобы перейти в приложение.")
+                .setContentText("Служба автоматических отметок запущена.")
+                .setSmallIcon(R.drawable.favicon)
+                .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 128, false))
+                //.setContentIntent(pendingIntent)
+                .setOngoing(true)
+                .build();
+
+        startForeground(101, notification);
     }
 
     private final class WifiNetworkLastState{
@@ -715,12 +834,26 @@ public final class MarkOpService extends Service {
 
     private boolean stopRequestedPoll(){
         if (isStopRequested){
+
             isStopRequested = false;
 
             markStarted = false;
 
             Log.i(TAG, "Stop request was detected! Status changed to {STOPPED}.");
             DebugOut.generalPrintInfo(this, "Зарегистрирован запрос на очистку очереди отметок.\r\nОчередь очищена.", TAG);
+
+            ///////////////////////////////////////////////////////////////////////////////////
+            // Состояние потока сервиса на момент остановки сервиса.
+            /*
+            String mess;
+            if (queueThreadHandler != null){
+                mess = queueThreadHandler.getState().toString();
+            } else
+                mess = "{класс потока уничтожен}";
+
+            DebugOut.generalPrintInfo(this, "Состояние потока сервиса:\r\n"+mess, TAG);
+            */
+            ///////////////////////////////////////////////////////////////////////////////////
 
             // Удаляем из очереди все имеющиеся сообщения, если таковые имеются.
             queueHandler.removeCallbacksAndMessages(null);
@@ -862,7 +995,14 @@ public final class MarkOpService extends Service {
                 //-----------------------------------------------------
                 // Получение команды: запуск сервиса автоматических отметок на сервере.
                 case MarkOpService.CMD_RUN_MARKS:
+                    // Перемещаем сервис на уровень foreground.
+                    initForeground();
                     reRun(this);
+                    break;
+                // -----------------------------------------------------
+                // Получение команды: остановить сервис.
+                case MarkOpService.CMD_STOP:
+                    stop();
                     break;
                 //-----------------------------------------------------
                 default:break;
@@ -875,7 +1015,7 @@ public final class MarkOpService extends Service {
         // сервисов, которые сами обрабатывают свои состояния, явно стартуя и завершая свою работу при
         // необходимости (с помощью методов startService() и stopService()). Это относится к сервисам, которые
         // проигрывают музыку или выполняют другие задачи в фоновом режиме.
-        return START_STICKY;
+        //return START_STICKY;
 
         // Этот режим используется в сервисах, которые запускаются для выполнения конкретных действий или команд.
         // Как правило, такие сервисы используют stopSelf() для прекращения работы, как только команда выполнена.
@@ -891,7 +1031,7 @@ public final class MarkOpService extends Service {
         // когда будет сделан явный запрос на запуск или если процесс завершился до вызова метода
         // stopSelf(). В последнем случае вызовется обработчик onStartCommand(), он получит первоначальное
         // намерение, обработка которого не завершилась должным образом.
-        //return START_REDELIVER_INTENT;
+        return START_REDELIVER_INTENT;
     }
 
     @Override
@@ -902,7 +1042,7 @@ public final class MarkOpService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        stop();
+        //stop();
         DebugOut.generalPrintWarning(getApplicationContext(), "Сервис автоматической отметки автотранспорта остановлен!", TAG);
     }
 
