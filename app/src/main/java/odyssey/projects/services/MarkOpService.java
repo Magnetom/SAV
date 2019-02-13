@@ -160,6 +160,7 @@ public final class MarkOpService extends Service {
 
         //HandlerThread queueThreadHandler = new HandlerThread("REMOTE_MARKER_SERVICE_THREAD", android.os.Process.THREAD_PRIORITY_BACKGROUND);
         HandlerThread queueThreadHandler = new HandlerThread("REMOTE_MARKER_SERVICE_THREAD", android.os.Process.THREAD_PRIORITY_FOREGROUND);
+        queueThreadHandler.setDaemon(true);
         // Запускаем поток.
         queueThreadHandler.start();
         // Настраиваем обработчик сообщений.
@@ -175,8 +176,6 @@ public final class MarkOpService extends Service {
         // Настраиваем очередь веб-запросов, если она не была настроена ранее.
         requestQueue = Volley.newRequestQueue(context);
         requestQueue.getCache().clear();
-
-        LocalSettings settings = LocalSettings.getInstance(context);
 
         // Отсылаем отчет в главное активити.
         sendStatusReport(StatusEnum.NO_INIT);
@@ -289,16 +288,16 @@ public final class MarkOpService extends Service {
     }
 
     private final class WifiNetworkLastState{
-        public WifiStatus status;
-        public int networkId;
+        WifiStatus status;
+        int networkId;
 
-        public WifiNetworkLastState(WifiStatus status, int networkId) {this.status = status; this.networkId = networkId;}
+        WifiNetworkLastState(WifiStatus status, int networkId) {this.status = status; this.networkId = networkId;}
 
-        public WifiStatus getStatus(){return status;}
-        public int getNetworkId()    {return networkId;}
+        WifiStatus getStatus(){return status;}
+        int getNetworkId()    {return networkId;}
 
-        public void setStatus    (WifiStatus status) {this.status = status;}
-        public void setNetworkId (int networkId)     {this.networkId = networkId;}
+        void setStatus(WifiStatus status) {this.status = status;}
+        void setNetworkId(int networkId)     {this.networkId = networkId;}
 
     }
 
@@ -423,7 +422,7 @@ public final class MarkOpService extends Service {
                             Log.i(TAG, "Connecting to the server " + ServerAddress + " ...");
                             // Ок, сеть подключена.
                             // Теперь проверяем связь с сервером. Для начала - пингуем его.
-                            if (General.isReachableByPing_wifi(getApplicationContext(), ServerAddress)) {
+                            if (General.isReachableByPing_wifi(getApplicationContext(), ServerAddress, true)) {
 
                                 //////////////////////////////////////////////////////////////////////
                                 // Все проверки пройдены, начинается попытка отметиться на сервере. //
@@ -671,17 +670,19 @@ public final class MarkOpService extends Service {
     // Сохранить текущее состояние модуля WiFi.
     private void backupWifiModuleState(){
 
-        DebugOut.generalPrintInfo(getApplicationContext(), "Сохраняется текущее состояние WiFi модуля.", TAG);
+        DebugOut.generalPrintInfo(getApplicationContext(), "Сохраняется текущее состояние WiFi модуля ...", TAG);
         if (isWifiEnabled(getApplicationContext())){
 
             // Если текущее активное соединение - это соединение с необходимой нам сетью,
             // то запланируем отключение от него по окончанию отметки.
             if (isActiveWifiConnectionSuitable()) {
+                DebugOut.generalPrintInfo(getApplicationContext(), "Текущее состояние WiFi сохранено как:\r\n\"Подключен к рабочей сети\".", TAG);
                 wifiLastState.setStatus(WifiStatus.DISABLED);
                 return;
             }
             // В противном случае - это соединение с какой-то другой сетью, которая была активирована
             // пользователем. Сохраняем это соединение для восстановления его после отметки.
+            DebugOut.generalPrintInfo(getApplicationContext(), "Текущее состояние WiFi сохранено как:\r\n\"Подключен к сети пользователя\".", TAG);
             wifiLastState.setStatus(WifiStatus.ENABLED);
             try {
                 wifiLastState.setNetworkId(WifiHelper.getActiveWifiNetworkId(getApplicationContext()));
@@ -690,6 +691,7 @@ public final class MarkOpService extends Service {
                 wifiLastState.setNetworkId(-1);
             }
         } else {
+            DebugOut.generalPrintInfo(getApplicationContext(), "Текущее состояние WiFi сохранено как:\r\n\"ОТКЛЮЧЕН\".", TAG);
             wifiLastState.setStatus(WifiStatus.DISABLED);
             wifiLastState.setNetworkId(-1);
         }
@@ -843,15 +845,13 @@ public final class MarkOpService extends Service {
             DebugOut.generalPrintInfo(this, "Зарегистрирован запрос на очистку очереди отметок.\r\nОчередь очищена.", TAG);
 
             ///////////////////////////////////////////////////////////////////////////////////
-            // Состояние потока сервиса на момент остановки сервиса.
+            // Уничтожаем основной поток отметок.
             /*
-            String mess;
-            if (queueThreadHandler != null){
-                mess = queueThreadHandler.getState().toString();
-            } else
-                mess = "{класс потока уничтожен}";
-
-            DebugOut.generalPrintInfo(this, "Состояние потока сервиса:\r\n"+mess, TAG);
+            if (queueThreadHandler != null) {
+                Thread dummy = queueThreadHandler;
+                queueThreadHandler = null;
+                dummy.interrupt();
+            }
             */
             ///////////////////////////////////////////////////////////////////////////////////
 
@@ -902,14 +902,11 @@ public final class MarkOpService extends Service {
     }
 
     /* Запустить поток для автоматического выполнения отметок в бесконечном цикле. */
-    public Boolean reRun(Context context){
+    public boolean reRun(Context context){
 
         markStarted = false;
 
         clrStopRequest();
-
-        // Заблокировать возможность остановки сервиса средствами ОС Android после блокировки дисплея.
-        serviceWakeLock(context);
 
         // Проверяем флаг глобального разрешения/запрещения работы приложения
         Boolean globEnable = settings.getBoolean(LocalSettings.SP_GLOBAL_ENABLE);
@@ -995,9 +992,11 @@ public final class MarkOpService extends Service {
                 //-----------------------------------------------------
                 // Получение команды: запуск сервиса автоматических отметок на сервере.
                 case MarkOpService.CMD_RUN_MARKS:
-                    // Перемещаем сервис на уровень foreground.
-                    initForeground();
-                    reRun(this);
+                    // Если нет препядствий для запуска сервиса, выводится уведомление.
+                    if (reRun(this)){
+                        // Этим уведомлением перемещаем сервис на уровень foreground.
+                        initForeground();
+                    }
                     break;
                 // -----------------------------------------------------
                 // Получение команды: остановить сервис.

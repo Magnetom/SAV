@@ -18,6 +18,7 @@ import java.util.Objects;
 import odyssey.projects.callbacks.OnViewCreatedListener;
 import odyssey.projects.debug.LogViewer;
 import odyssey.projects.pref.LocalSettings;
+import odyssey.projects.pref.SettingsCache;
 import odyssey.projects.sav.driver.R;
 
 
@@ -47,7 +48,7 @@ public final class DebugLogFragment extends Fragment {
         //Основная инициализация.
         mainInit();
 
-        if (listener!=null) listener.onViewCreated(view,savedInstanceState);
+        if (listener != null) listener.onViewCreated(view,savedInstanceState);
     }
 
     public void setOnViewCreatedListener(OnViewCreatedListener listener){
@@ -69,6 +70,7 @@ public final class DebugLogFragment extends Fragment {
             clrBtn.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+                    if (getContext() != null)
                     // Настраиваем диалоговое окно очистки БД и локальных настроек.
                     new AlertDialog.Builder(getContext())
                             .setIcon(R.drawable.error_outline_red_48x48)
@@ -110,7 +112,22 @@ public final class DebugLogFragment extends Fragment {
                     }
                 }
             });
-            infoChkBox.setChecked(localSettings.getBoolean(LocalSettings.SP_DEBUG_LOG_INFO));
+            //infoChkBox.setChecked(localSettings.getBoolean(LocalSettings.SP_DEBUG_LOG_INFO));
+            infoChkBox.post(new Runnable() {
+                @Override
+                public void run() {
+                    infoChkBox.setChecked(SettingsCache.DEBUG_LOG_INFO);
+                }
+            });
+
+            /*
+            new Handler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    infoChkBox.setChecked(true);
+                }
+            }, 6000);
+            */
         }
 
         // Чекбокс "ПРЕДУПРЕЖДЕНИЯ"
@@ -125,7 +142,13 @@ public final class DebugLogFragment extends Fragment {
                     }
                 }
             });
-            warnChkBox.setChecked(localSettings.getBoolean(LocalSettings.SP_DEBUG_LOG_WARN));
+            //warnChkBox.setChecked(localSettings.getBoolean(LocalSettings.SP_DEBUG_LOG_WARN));
+            warnChkBox.post(new Runnable() {
+                @Override
+                public void run() {
+                    warnChkBox.setChecked(SettingsCache.DEBUG_LOG_WARN);
+                }
+            });
         }
 
         // Чекбокс "ОШИБКИ"
@@ -140,7 +163,13 @@ public final class DebugLogFragment extends Fragment {
                     }
                 }
             });
-            errorChkBox.setChecked(localSettings.getBoolean(LocalSettings.SP_DEBUG_LOG_ERROR));
+            //errorChkBox.setChecked(localSettings.getBoolean(LocalSettings.SP_DEBUG_LOG_ERROR));
+            errorChkBox.post(new Runnable() {
+                @Override
+                public void run() {
+                    errorChkBox.setChecked(SettingsCache.DEBUG_LOG_ERROR);
+                }
+            });
         }
 
         // Кнопка "РАСШАРИТЬ ЛОГ"

@@ -2,10 +2,6 @@ package odyssey.projects.utils.network;
 
 import android.content.Context;
 import android.net.ConnectivityManager;
-import android.net.Network;
-import android.net.NetworkInfo;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
 
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
@@ -15,9 +11,6 @@ import java.net.URL;
 import java.util.Enumeration;
 
 import odyssey.projects.utils.network.wifi.WifiHelper;
-
-import static android.content.Context.WIFI_SERVICE;
-import static android.net.ConnectivityManager.TYPE_WIFI;
 
 /**
  * Created by Odyssey on 28.03.2017.
@@ -73,12 +66,13 @@ public class General {
         return true;
     }
 
-    public static boolean isReachableByPing_wifi(Context context, String address) {
+    public static boolean isReachableByPing_wifi(Context context, String address, boolean dummy) {
 
+        if (dummy) return true;
         try{
             InetAddress pingAddr  = InetAddress.getByName(address);
             NetworkInterface iFace = WifiHelper.getActiveWifiInterface(context);
-            return pingAddr.isReachable(iFace, 200, 500);
+            return pingAddr.isReachable(iFace, 128, 6000);
         }  catch (Exception e){
             e.printStackTrace();
         }
@@ -103,11 +97,7 @@ public class General {
             Process  mIpAddrProcess = runtime.exec("/system/bin/ping -c 1 -w 2 " + InAddr.getHostAddress());
             int mExitValue = mIpAddrProcess.waitFor();
 
-            if(mExitValue==0){
-                return true;
-            }else{
-                return false;
-            }
+            return mExitValue == 0;
         }  catch (Exception e){
             e.printStackTrace();
         }
@@ -140,7 +130,7 @@ public class General {
                 for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses(); enumIpAddr.hasMoreElements();) {
                     InetAddress inetAddress = enumIpAddr.nextElement();
                     if (!inetAddress.isLoopbackAddress()) {
-                        return inetAddress.getHostAddress().toString();
+                        return inetAddress.getHostAddress();
                     }
                 }
             }

@@ -2,11 +2,9 @@ package odyssey.projects.pref;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.content.res.Resources;
 import android.preference.PreferenceManager;
 
 import odyssey.projects.About;
-import odyssey.projects.sav.driver.R;
 import odyssey.projects.sav.driver.Settings;
 
 
@@ -83,8 +81,8 @@ public class LocalSettings {
             saveBoolean(SP_NOT_FIRST_JOIN, true);
 
             // Применяем настройки по-умолчанию (при первом запуске програмы).
-            saveBoolean(SP_GLOBAL_ENABLE, true);   // Глобальное разрешение работы приложение - ЗАПРЕЩЕНО.
-            saveBoolean(SP_USE_BSSID_FILTER, true); // Использовать BSSID-фильтрацию.
+            saveBoolean(SP_GLOBAL_ENABLE, false);   // Глобальное разрешение работы приложение - ЗАПРЕЩЕНО.
+            saveBoolean(SP_USE_BSSID_FILTER, false); // Использовать BSSID-фильтрацию.
             saveBoolean(SP_USE_SSID_FILTER, true);  // Использовать SSID-фильтрацию.
 
             saveBoolean(SP_USE_VIBRATION, false);     // Использовать виро-оповещение об успешной отметке.
@@ -99,13 +97,13 @@ public class LocalSettings {
             saveBoolean(SP_USE_POPUP_WARN,  false); // Использовать всплывающие предупреждения.
             saveBoolean(SP_USE_POPUP_ERROR, false); // Использовать всплывающие сообщения об ошибках.
 
-            saveBoolean(SP_USE_DEBUG_LOG, true);     // Использовать логирование отладочной информации в специальный ListView.
+            saveBoolean(SP_USE_DEBUG_LOG, false);     // Использовать логирование отладочной информации в специальный ListView.
             saveBoolean(SP_DEBUG_LOG_INFO, true);
             saveBoolean(SP_DEBUG_LOG_WARN, true);
             saveBoolean(SP_DEBUG_LOG_ERROR, true);
             saveText(SP_DEBUG_LOG_MAX_LINES, "1000"); // Максимальное количество элементов списка оладочного лога событий.
 
-            saveText(LocalSettings.SP_VEHICLE, "РОМА");
+            //saveText(LocalSettings.SP_VEHICLE, "РОМА");
         }
     }
 

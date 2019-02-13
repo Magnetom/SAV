@@ -11,7 +11,6 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.constraint.ConstraintLayout;
 import android.support.v4.app.Fragment;
-import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.SwitchCompat;
 import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
@@ -45,9 +44,6 @@ public final class MainFragment extends Fragment {
     // Кнопка, на которой отображается текущий выбранный госномер.
     private TextView vehicleFrameButton;
 
-    // Текущая дата списка отметок.
-    private TextView currDate;
-
     // Анимация, которая отображает статус менеджера маркеров.
     private GifImageView gifImage;
 
@@ -68,8 +64,7 @@ public final class MainFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        View view = inflater.inflate(R.layout.main_fragment, container, false);
-        return view;
+        return inflater.inflate(R.layout.main_fragment, container, false);
     }
 
     @Override
@@ -264,9 +259,10 @@ public final class MainFragment extends Fragment {
     // Инициализация слушателей на нажатие объектов.
     private void setupOnClickListeners() {
 
+        if (getActivity() == null) return;
         /* ТАБЛИЧКА СО СТАТУСОМ */
         ConstraintLayout statusLayout = getActivity().findViewById(R.id.statusLayout);
-        View statusView = ((AppCompatActivity) getContext()).getLayoutInflater().inflate(R.layout.status_button_layout, statusLayout, false);
+        View statusView = getActivity().getLayoutInflater().inflate(R.layout.status_button_layout, statusLayout, false);
         statusLayout.addView(statusView);
 
         /* АНИМАЦИЯ НА ТАБЛИЧКЕ СО СТАТУСОМ */
@@ -274,7 +270,7 @@ public final class MainFragment extends Fragment {
 
         /* ТАБЛИЧКА С ГОСНОМЕРОМ */
         ConstraintLayout frameLayout = getActivity().findViewById(R.id.vehicleFrameLayout);
-        View frameView = ((AppCompatActivity) getContext()).getLayoutInflater().inflate(R.layout.vehicle_frame_layout, frameLayout, false);
+        View frameView = getActivity().getLayoutInflater().inflate(R.layout.vehicle_frame_layout, frameLayout, false);
         frameLayout.addView(frameView);
 
         // Получаем ссылку на кнопку.
@@ -317,7 +313,8 @@ public final class MainFragment extends Fragment {
         });
 
         /* ЗАГОЛОВОК СПИСКА ОТМЕТОК - ТЕКУЩАЯ ДАТА */
-        currDate = getActivity().findViewById(R.id.currDateView);
+        // Текущая дата списка отметок.
+        TextView currDate = getActivity().findViewById(R.id.currDateView);
         currDate.setText(getDDMMYYYY(System.currentTimeMillis()));
 
         /* ЗАГОЛОВОК СПИСКА ОТМЕТОК  - ОБЩЕЕ КОЛИЧЕСТВО ПРОЙДЕННЫХ КРУГОВ */
@@ -360,7 +357,8 @@ public final class MainFragment extends Fragment {
         if (getActivity() != null) {
 
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                getActivity().startForegroundService(new Intent(getContext(), MarkOpService.class).putExtra(ACTION_TYPE_CMD, param));
+                //getActivity().startForegroundService(new Intent(getContext(), MarkOpService.class).putExtra(ACTION_TYPE_CMD, param));
+                getActivity().startService(new Intent(getContext(), MarkOpService.class).putExtra(ACTION_TYPE_CMD, param));
             } else {
                 getActivity().startService(new Intent(getContext(), MarkOpService.class).putExtra(ACTION_TYPE_CMD, param));
             }
@@ -374,7 +372,8 @@ public final class MainFragment extends Fragment {
             if (isMyServiceRunning(MarkOpService.class)){
 
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O){
-                    getActivity().startForegroundService(new Intent(getContext(), MarkOpService.class).putExtra(ACTION_TYPE_CMD, MarkOpService.CMD_STOP));
+                    //getActivity().startForegroundService(new Intent(getContext(), MarkOpService.class).putExtra(ACTION_TYPE_CMD, MarkOpService.CMD_STOP));
+                    getActivity().startService(new Intent(getContext(), MarkOpService.class).putExtra(ACTION_TYPE_CMD, MarkOpService.CMD_STOP));
                 } else {
                     getActivity().startService(new Intent(getContext(), MarkOpService.class).putExtra(ACTION_TYPE_CMD, MarkOpService.CMD_STOP));
                 }

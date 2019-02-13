@@ -1,11 +1,10 @@
 package odyssey.projects.debug;
 
-import android.app.Activity;
-import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Environment;
+import android.os.StrictMode;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,25 +16,26 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URLConnection;
 import java.util.ArrayList;
-import java.util.List;
 
 import odyssey.projects.adapters.LogAdapter;
 import odyssey.projects.callbacks.DebugLogListener;
 import odyssey.projects.sav.driver.R;
 import odyssey.projects.utils.ZipManager;
 
-import static odyssey.projects.utils.DateTimeUtils.*;
+import static odyssey.projects.utils.DateTimeUtils.getCurrentTimeStamp;
+import static odyssey.projects.utils.DateTimeUtils.getCurrentTimeStampForFileName;
 
 public class LogViewer {
 
     public static final String TAG = "LOG_VIEWER";
 
-    private final Context context;
+    private Context context;
     private LogAdapter adapter;
     private static DebugLogListener listener;
 
     public LogViewer(Context context) {
         this.context = context;
+        if (context == null) return;
 
         setupAdapter();
         setupListView();
@@ -51,7 +51,7 @@ public class LogViewer {
         };
     }
 
-    public static DebugLogListener getListener(){
+    static DebugLogListener getListener(){
         return listener;
     }
 
@@ -93,7 +93,7 @@ public class LogViewer {
         adapter.clear();
     }
 
-    public void addReport(String tag, LogItemType type, String message){
+    private void addReport(String tag, LogItemType type, String message){
         if (adapter != null){
             LogItem item = new LogItem();
 
@@ -109,9 +109,16 @@ public class LogViewer {
 
     public void shareData(){
         // Создаем файл лога событий.
-        File zipFile = saveResults();
+        File zipFile = saveResults(false);
 
-        if (zipFile != null) {
+        if (zipFile != null && context != null) {
+
+            //////////////////////////////////////////////////////////////////////////////
+            // Без этих двух строк приложение отваливается при попытке передать Intent !!!
+            StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
+            StrictMode.setVmPolicy(builder.build());
+            //////////////////////////////////////////////////////////////////////////////
+
             // Отправляем полученный файл любым удобным способом (системой будет предложен выбор).
             Intent sendIntent = new Intent();
             sendIntent.setAction(Intent.ACTION_SEND);
@@ -126,7 +133,15 @@ public class LogViewer {
         }
     }
 
-    private File saveResults() {
+    private String getStoragePlace(boolean useExternalStorage){
+        if (useExternalStorage) return Environment.getExternalStorageState();
+        else
+        return context.getCacheDir().toString();
+    }
+
+    private File saveResults(boolean useExternalStorage) {
+
+        if (context == null) return null;
 
         try {
 
@@ -154,13 +169,14 @@ public class LogViewer {
             // общего доступа к нему.                                                                     //
             ////////////////////////////////////////////////////////////////////////////////////////////////
             // Проверяем возможность записи на вешний носитель.
+            if (useExternalStorage)
             if (!Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
                 DebugOut.generalPrintError(context, "Can't get access to the external storage.", TAG);
                 return null;
             }
 
             // Создается директория на внешенем носителе для записи туда будущего zip-файла.
-            File zipDir = new File( Environment.getExternalStorageDirectory(),"logs");
+            File zipDir = new File(getStoragePlace(useExternalStorage),"logs");
             if (!zipDir.exists()) {
                 if (!zipDir.mkdirs()) {
                     if (!zipDir.exists()) {
@@ -178,7 +194,7 @@ public class LogViewer {
 
             // Удаляем неныжный более временный файл.
             if (tmpFile != null) {
-                tmpFile.delete();
+                boolean result = tmpFile.delete();
             }
 
             return zipFile;

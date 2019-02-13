@@ -34,13 +34,15 @@
                 android:text="Информация"
                 android:textAlignment="center"
                 android:textAllCaps="true"
-                android:textSize="12sp" />
+                android:textSize="11sp" />
 
             <CheckBox
                 android:id="@+id/infoCheckBox"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
+                android:checked="false"
+                android:enabled="true"
                 android:textAlignment="center" />
         </LinearLayout>
 
@@ -56,15 +58,17 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:layout_marginBottom="8dp"
-                android:text="Предупреждения"
+                android:text="Предупр-я"
                 android:textAlignment="center"
                 android:textAllCaps="true"
-                android:textSize="12sp" />
+                android:textSize="11sp" />
 
             <CheckBox
                 android:id="@+id/warnCheckBox"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:checked="false"
+                android:enabled="true"
                 android:layout_gravity="center" />
         </LinearLayout>
 
@@ -83,12 +87,14 @@
                 android:text="Ошибки"
                 android:textAlignment="center"
                 android:textAllCaps="true"
-                android:textSize="12sp" />
+                android:textSize="11sp" />
 
             <CheckBox
                 android:id="@+id/errorCheckBox"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:checked="false"
+                android:enabled="true"
                 android:layout_gravity="center" />
         </LinearLayout>
     </LinearLayout>
