@@ -15,6 +15,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
@@ -46,6 +47,7 @@ import static odyssey.projects.utils.network.wifi.Wifi.connectToNetworkId;
 import static odyssey.projects.utils.network.wifi.Wifi.disableWifi;
 import static odyssey.projects.utils.network.wifi.Wifi.enableWifi;
 import static odyssey.projects.utils.network.wifi.Wifi.isWifiEnabled;
+import static odyssey.projects.utils.network.wifi.Wifi.removeWifiConfiguration;
 
 public final class MarkOpService extends Service {
 
@@ -727,8 +729,8 @@ public final class MarkOpService extends Service {
         if (SettingsCache.USE_BSSID_FILTER) WifiBSSID = SettingsCache.ALLOWED_WIFI_BSSID;
 
         String extraMessage = "";
-        if (WifiSSID  != null) extraMessage += "\r\nSSID: "  + WifiSSID;
-        if (WifiBSSID != null) extraMessage += "\r\nBSSID: " + WifiBSSID;
+        if (WifiSSID  != null) extraMessage += "\r\nSSID: ["  + WifiSSID + "]";
+        if (WifiBSSID != null) extraMessage += "\r\nBSSID: [" + WifiBSSID + "]";
         if (WifiSSID == null && WifiBSSID == null) extraMessage = "\r\n - любая WiFi сеть.";
 
         DebugOut.generalPrintInfo(getApplicationContext(), "Запрос на соединение с предопределенной WiFi сетью:"+extraMessage+"\r\nВыполняется подключение ...", TAG);
@@ -752,25 +754,39 @@ public final class MarkOpService extends Service {
             getApplicationContext().unregisterReceiver(wifiConnectedReceiver);
             wifiConnectedReceiver = null;
         }
-        // Настраивае приемник заново.
+
+        DebugOut.generalPrintInfo(getApplicationContext(), "Запущен слушатель нового WiFi подключения.", TAG);
+
+        // Настраиваем приемник заново.
         getApplicationContext().registerReceiver(wifiConnectedReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
 
                 Log.i(TAG, "Registered WiFi connectivity changes ...");
 
-                if (isActiveWifiConnectionSuitable()) {
+                final WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
 
-                    DebugOut.generalPrintInfo(getApplicationContext(), "Искомое подключение найдено:\r\nSSID: "+SettingsCache.ALLOWED_WIFI_SSID+"\r\nBSSID: "+ SettingsCache.ALLOWED_WIFI_BSSID, TAG);
-                    Log.i(TAG, "Ok, searching connection has been found.\r\nSSID: "+SettingsCache.ALLOWED_WIFI_SSID+"\r\nBSSID: "+ SettingsCache.ALLOWED_WIFI_BSSID);
+                if (wifiManager.isWifiEnabled()) {
 
-                    // Ускорить отложенное задание на отметку.
-                    boostMarkTask(getApplicationContext(), false);
-                    // Отменяем слушателя.
-                    getApplicationContext().unregisterReceiver(this);
-                    wifiConnectedReceiver = null;
+                    if (isActiveWifiConnectionSuitable()) {
+                        DebugOut.generalPrintInfo(getApplicationContext(), "Модуль WiFi включен.", TAG);
+                        DebugOut.generalPrintInfo(getApplicationContext(), "Искомое подключение найдено:\r\nSSID: " + SettingsCache.ALLOWED_WIFI_SSID + "\r\nBSSID: " + SettingsCache.ALLOWED_WIFI_BSSID, TAG);
+                        Log.i(TAG, "Ok, searching connection has been found.\r\nSSID: " + SettingsCache.ALLOWED_WIFI_SSID + "\r\nBSSID: " + SettingsCache.ALLOWED_WIFI_BSSID);
+
+                        // Ускорить отложенное задание на отметку.
+                        boostMarkTask(getApplicationContext(), false);
+                        // Отменяем слушателя.
+                        getApplicationContext().unregisterReceiver(this);
+                        wifiConnectedReceiver = null;
+                    } else {
+                        Log.i(TAG, "Current WiFi connection is not allowed for the application requirements!");
+                        String extra = "";
+                        String ssid = wifiManager.getConnectionInfo().getSSID();
+                        if (ssid != null) extra = StrHelper.trimAll(ssid);
+                        DebugOut.generalPrintWarning(getApplicationContext(), "Обнаружено новое WiFi подключение:\r\nSSID [" + extra + "]\r\n, но оно не соответствует настройкам безопасности приложения.", TAG);
+                    }
                 } else {
-                    Log.i(TAG, "Current WiFi connection is not allowed for the application requirements!");
+                    DebugOut.generalPrintInfo(getApplicationContext(), "Произошло отключение WiFi.", TAG);
                 }
             }
         }, filters);
@@ -946,6 +962,18 @@ public final class MarkOpService extends Service {
         // Обнуляем значение последнего состояния WiFi модуля перед. По-умолчанию - состояние НЕ ИЗВЕСТНО.
         wifiLastState.setStatus(WifiStatus.UNKNOWN);
         wifiLastState.setNetworkId(-1);
+
+        // Если это первый запуск отметок и первое подключения к WiFi этого
+        // релиза приложения соответственно, то пытаемся очистить настройки WiFi соединения,
+        // сделанные предыдущими версиями этого приложения (если таковые есть).
+        if (!SettingsCache.WIFI_AUTO_CONFIGURED){
+            // Вне зависимости от результатов автоконфигурирования/сброса настроек
+            // более не пытаемся повторить сброс заново. Это можно сделать вручную в инженерном меню.
+            LocalSettings.getInstance(this).setSpWifiAutoConfigured();
+            SettingsCache.WIFI_AUTO_CONFIGURED = true;
+            // Удаляем преднастроенное ранее подключение, если таковое имеется.
+            removeWifiConfiguration(context, SettingsCache.ALLOWED_WIFI_SSID);
+        }
 
         // Отсылаем отчет в главное активити.
         sendStatusReport(StatusEnum.ACTIVATED);

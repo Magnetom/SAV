@@ -26,8 +26,10 @@ public class LocalSettings {
 
     private static final String SP_USE_SSID_FILTER    = "use_ssid_filter";
     private static final String SP_USE_BSSID_FILTER   = "use_bssid_filter";
-    private static final String SP_ALLOWED_WIFI_SSID  = "pref_wifi_ssid";
+    public  static final String SP_ALLOWED_WIFI_SSID  = "pref_wifi_ssid";
     private static final String SP_ALLOWED_WIFI_BSSID = "pref_wifi_bssid";
+    public  static final String SP_WIFI_CONFIG_RESET  = "wifi_config_reset";
+    public  static final String SP_WIFI_AUTO_CONFIGURED = "wifi_auto_configured";
 
     private static final String SP_NOT_FIRST_JOIN     = "not_first_join";
     public  static final String SP_ALL_DB_REMOVE      = "all_db_remove";
@@ -36,9 +38,9 @@ public class LocalSettings {
     private static final String SP_USE_MUSIC          = "use_music";
     private static final String SP_USE_SCREEN_WAKEUP  = "use_screen_wakeup";
 
-    private static final String SP_USE_POPUP_INFO  = "use_popup_info";
-    private static final String SP_USE_POPUP_WARN  = "use_popup_warn";
-    private static final String SP_USE_POPUP_ERROR = "use_popup_error";
+    private static final String SP_USE_POPUP_INFO     = "use_popup_info";
+    private static final String SP_USE_POPUP_WARN     = "use_popup_warn";
+    private static final String SP_USE_POPUP_ERROR    = "use_popup_error";
 
     private static final String SP_USE_DEBUG_LOG        = "use_debug_log";
     private static final String SP_DEBUG_LOG_MAX_LINES  = "debug_log_max_lines";
@@ -61,7 +63,7 @@ public class LocalSettings {
         // Предварительные настройки.
         setup ();
         // Настройки, которые будут применены при первом запуске.
-        firstJoin();
+        firstJoin(false);
         // Обновляем настройки в кеше настроек.
         updateCacheSettings();
     }
@@ -76,8 +78,14 @@ public class LocalSettings {
         return instance;
     }
 
-    private void firstJoin(){
-        if (!getBoolean(SP_NOT_FIRST_JOIN)){
+    public void restAllSettings(){
+        firstJoin(true);
+        updateCacheSettings();
+    }
+
+    private void firstJoin(boolean inAnyCase){
+        if (!getBoolean(SP_NOT_FIRST_JOIN) || inAnyCase){
+
             saveBoolean(SP_NOT_FIRST_JOIN, true);
 
             // Применяем настройки по-умолчанию (при первом запуске програмы).
@@ -102,8 +110,6 @@ public class LocalSettings {
             saveBoolean(SP_DEBUG_LOG_WARN, true);
             saveBoolean(SP_DEBUG_LOG_ERROR, true);
             saveText(SP_DEBUG_LOG_MAX_LINES, "1000"); // Максимальное количество элементов списка оладочного лога событий.
-
-            //saveText(LocalSettings.SP_VEHICLE, "РОМА");
         }
     }
 
@@ -160,6 +166,10 @@ public class LocalSettings {
         return Settings.MAIN_PROTOCOL + getText(SP_SERVER_ADDRESS) + Settings.WORK_DIRECTORY + script_name;
     }
 
+    public void setSpWifiAutoConfigured(){
+        saveBoolean(SP_WIFI_AUTO_CONFIGURED, true);
+    }
+
     public void updateCacheSettings(){
 
         SettingsCache.GLOBAL_ENABLE      = getBoolean(SP_GLOBAL_ENABLE);
@@ -171,6 +181,8 @@ public class LocalSettings {
         SettingsCache.ALLOWED_WIFI_BSSID = getText(SP_ALLOWED_WIFI_BSSID, Settings.ALLOWED_WIFI_DEFAULT_BSSID);
         SettingsCache.USE_SSID_FILTER    = getBoolean(SP_USE_SSID_FILTER);
         SettingsCache.ALLOWED_WIFI_SSID  = getText(SP_ALLOWED_WIFI_SSID, Settings.ALLOWED_WIFI_DEFAULT_SSID);
+        SettingsCache.WIFI_CONFIG_RESET  = getBoolean(SP_WIFI_CONFIG_RESET);
+        SettingsCache.WIFI_AUTO_CONFIGURED = getBoolean(SP_WIFI_AUTO_CONFIGURED);
 
         SettingsCache.USE_VIBRO         = getBoolean(SP_USE_VIBRATION);
         SettingsCache.USE_MUSIC         = getBoolean(SP_USE_MUSIC);

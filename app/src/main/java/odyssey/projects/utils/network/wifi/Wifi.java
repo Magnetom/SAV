@@ -4,19 +4,14 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.net.ConnectivityManager;
-import android.net.NetworkCapabilities;
-import android.net.NetworkInfo;
-import android.net.NetworkRequest;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
-import android.os.Build;
 import android.util.Log;
 
 import java.util.List;
 
-import odyssey.projects.utils.network.NetworkStateChangeListener;
+import odyssey.projects.sav.driver.Settings;
 
 import static android.content.Context.WIFI_SERVICE;
 
@@ -46,52 +41,6 @@ public class Wifi {
     }
 
 
-    public static void bindToNetwork(Context context, final String networkSSID, final NetworkStateChangeListener listener) {
-
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            final ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-
-            //cm.registerNetworkCallback(
-            cm.requestNetwork(
-                    new NetworkRequest.Builder()
-                            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-                            .build(),
-                    // Эта функция обратного вызова {onAvailable()} будет вызвана сразу после того,
-                    // как инересующая сеть будет обнаружена.
-                    new ConnectivityManager.NetworkCallback() {
-                        @Override
-                        public void onAvailable(android.net.Network network) {
-                            boolean ssidAllowed = true;
-
-                            if (network == null) return;
-
-                            // SSID фильтр.
-                            if (networkSSID != null) {
-                                NetworkInfo networkInfo = cm.getNetworkInfo(network);
-                                if (networkInfo != null)
-                                if (!WifiHelper.areSsidEqual(networkInfo.getExtraInfo(), networkSSID)){
-                                    ssidAllowed = false;
-                                }
-                            }
-
-                            if (ssidAllowed){
-                                boolean connected = false;
-                                //super.onAvailable(network);
-                                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                    connected = cm.bindProcessToNetwork(network);
-                                } else if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
-                                    //noinspection deprecation
-                                    connected = ConnectivityManager.setProcessDefaultNetwork(network);
-                                }
-                                if(connected) {
-                                    if (listener!=null) listener.onNetworkBound();
-                                    cm.unregisterNetworkCallback(this);
-                                }
-                            }
-                        }
-                    });
-        }
-    }
 
     public static void connectToNetworkId(final Context context, int networkId) {
         if (networkId < 0) return;
@@ -115,42 +64,6 @@ public class Wifi {
                 wifiManager.reconnect();
                 break;
             }
-        }
-    }
-
-    public static void _bindToNetwork(final Context context) {
-        // Получаем доступ к менеджеру соединений.
-        final ConnectivityManager connectivityManager = (ConnectivityManager) context.getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            // set the transport type do WiFi.
-            NetworkRequest.Builder builder = new NetworkRequest.Builder();
-            // addTransportType-Добавляет заданный транспортный запрос к этому строителю.
-            builder.addTransportType(NetworkCapabilities.TRANSPORT_WIFI);
-            // Эта функция обратного вызова {onAvailable()} будет вызвана только после того, как инересующая сеть будет подключена.
-            connectivityManager.requestNetwork(builder.build(), new ConnectivityManager.NetworkCallback(){
-                @Override
-                public void onAvailable(android.net.Network network) {
-                    super.onAvailable(network);
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        //Use the General object to bind the process to it.
-                        connectivityManager.bindProcessToNetwork(network);
-                    }else { //This method was deprecated in API level 23
-                        ConnectivityManager.setProcessDefaultNetwork(network);
-                    }
-                    connectivityManager.unregisterNetworkCallback(this);
-                }
-            });
-        }
-    }
-
-    /* Отсоединить приложение от активного соединения (сокета). */
-    public static void unbindFromNetwork(final Context context) {
-        ConnectivityManager connectivityManager = (ConnectivityManager) context.getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            connectivityManager.bindProcessToNetwork(null);
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            ConnectivityManager.setProcessDefaultNetwork(null);
         }
     }
 
@@ -202,6 +115,12 @@ public class Wifi {
 
                     if (WifiHelper.isWifiParamsEquals(new WifiPointInfo(currSSID, currBSSID), searchPointInfo)) {
                         Log.i(TAG, "Ok, required configuration is found. It will enable now ...");
+
+                        ////////////////////////////////////////////////////////////////////////////
+                        /* ToDo: проверить текущий пароль и изменить его принеобходимости. */
+                        //wifiConfiguration.preSharedKey = "\""+ Settings.DEFAULT_WIFI_PASSWORD+"999\"";
+                        ////////////////////////////////////////////////////////////////////////////
+
                         // Подключаемся к выбранной сети
                         wifiNetworkReconnect(wifiManager, wifiConfiguration.networkId);
                         return true;
@@ -269,6 +188,12 @@ public class Wifi {
 
                                 if (WifiHelper.isWifiParamsEquals(new WifiPointInfo(currSSID, currBSSID), searchPointInfo)) {
                                     Log.i(TAG, "Ok, required configuration is found. It will apply right now ...");
+
+                                    ////////////////////////////////////////////////////////////////////////////
+                                    /* ToDo: проверить текущий пароль и изменить его принеобходимости. */
+                                    //wifiConfiguration.preSharedKey = "\""+ Settings.DEFAULT_WIFI_PASSWORD+"999\"";
+                                    ////////////////////////////////////////////////////////////////////////////
+
                                     // Подключаемся к выбранной сети
                                     wifiNetworkReconnect(wifiManager, wifiConfiguration.networkId);
                                     return;
@@ -333,7 +258,7 @@ public class Wifi {
                 Log.i(TAG, "The WiFi network we're looking for is in the scope: " + pointInfo.getSSID());
                 Log.i(TAG, "Creating WiFi configuration automatically ...");
                 // Создается конфигурация на основе данных, полученых при сканировании доступных сетей.
-                WifiConfiguration wifiConfig = createWifiConfig(result, pointInfo.getSSID(), "localnvk");
+                WifiConfiguration wifiConfig = createWifiConfig(result, pointInfo.getSSID(), Settings.DEFAULT_WIFI_PASSWORD);
                 // Регистрируем созданную конфигурацию.
                 int networkId = wifiManager.addNetwork(wifiConfig);
                 if (networkId == -1) {
@@ -362,7 +287,6 @@ public class Wifi {
         conf.SSID = "\"" + SSID + "\"";   // Please note the quotes. String should contain ssid in quotes
         conf.status = WifiConfiguration.Status.ENABLED;
         conf.priority = 40;
-
         conf.allowedProtocols.set(WifiConfiguration.Protocol.RSN);
         conf.allowedProtocols.set(WifiConfiguration.Protocol.WPA);
         conf.allowedPairwiseCiphers.set(WifiConfiguration.PairwiseCipher.CCMP);
@@ -402,49 +326,19 @@ public class Wifi {
         return conf;
     }
 
-    /* Подсоединиться к предпочтительной WiFi сети с нужным SSID. */
-    public static boolean connectToSSID(Context context, String SSID) {
-        WifiConfiguration configuration = createOpenWifiConfiguration(context, SSID);
-        Log.d(TAG,"Priority assigned to configuration is " + configuration.priority);
-
+    public static boolean removeWifiConfiguration(Context context, String SSID){
         WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-        int networkId = wifiManager.addNetwork(configuration);
-        Log.d(TAG,"networkId assigned while adding network is " + networkId);
-
-        return enableNetwork(context, SSID, networkId);
+        return removeWifiConfiguration(wifiManager, SSID);
     }
 
-    private static boolean enableNetwork(Context context, String SSID, int networkId) {
-        WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-        if (networkId == -1) {
-            networkId = getExistingNetworkId(context, SSID);
-            Log.d(TAG, "networkId of existing network is " + networkId);
+    private static boolean removeWifiConfiguration(WifiManager wifiManager, String SSID){
+        int networkId = getExistingNetworkId(wifiManager, SSID);
+        if (networkId == -1) return true;
 
-            if (networkId == -1) {
-                Log.e(TAG, "Couldn't add network with SSID: " + SSID);
-                return false;
-            }
-        }
-
-        return wifiManager.enableNetwork(networkId, true);
+        return wifiManager.removeNetwork(networkId);
     }
 
-    /* Создать конфигурацию для присоединения к открытой WiFi сети. */
-    private static WifiConfiguration createOpenWifiConfiguration(Context context, String SSID) {
-        WifiConfiguration configuration = new WifiConfiguration();
-        configuration.SSID = WifiHelper.formatSSID(SSID);
-        configuration.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
-        assignHighestPriority(context, configuration);
-        return configuration;
-    }
-
-    private static void disconnect(Context context) {
-        WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-        wifiManager.disconnect();
-    }
-
-    private static int getExistingNetworkId(Context context, String SSID) {
-        WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+    private static int getExistingNetworkId(WifiManager wifiManager, String SSID) {
         List<WifiConfiguration> configuredNetworks = wifiManager.getConfiguredNetworks();
         if (configuredNetworks != null) {
             for (WifiConfiguration existingConfig : configuredNetworks) {
@@ -454,17 +348,5 @@ public class Wifi {
             }
         }
         return -1;
-    }
-
-    private static void assignHighestPriority(Context context, WifiConfiguration config) {
-        WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-        List<WifiConfiguration> configuredNetworks = wifiManager.getConfiguredNetworks();
-        if (configuredNetworks != null) {
-            for (WifiConfiguration existingConfig : configuredNetworks) {
-                if (config.priority <= existingConfig.priority) {
-                    config.priority = existingConfig.priority + 1;
-                }
-            }
-        }
     }
 }

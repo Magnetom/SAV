@@ -3,7 +3,6 @@ package odyssey.projects.utils.network.wifi;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
@@ -23,6 +22,22 @@ import static java.lang.String.format;
 public class WifiHelper {
 
     @NonNull
+    public static String trimAll(String str) {
+        if (!isEmpty(str)) {
+            return trimQuotes(trimSpaces(str));
+        }
+        return str;
+    }
+
+    @NonNull
+    public static String trimSpaces(String str) {
+        if (!isEmpty(str)) {
+            return str.replaceAll("^ *", "").replaceAll(" *$", "");
+        }
+        return str;
+    }
+
+    @NonNull
     public static String trimQuotes(String str) {
         if (!isEmpty(str)) {
             return str.replaceAll("^\"*", "").replaceAll("\"*$", "");
@@ -35,11 +50,11 @@ public class WifiHelper {
     }
 
     public static boolean areSsidEqual(String SSID, String anotherSSID) {
-        return TextUtils.equals(trimQuotes(SSID), trimQuotes(anotherSSID));
+        return TextUtils.equals(trimAll(SSID), trimAll(anotherSSID));
     }
 
     private static boolean areBssidEqual(String BSSID, String anotherBSSID) {
-        return TextUtils.equals(trimQuotes(BSSID).toLowerCase(), trimQuotes(anotherBSSID).toLowerCase());
+        return TextUtils.equals(trimAll(BSSID).toLowerCase(), trimAll(anotherBSSID).toLowerCase());
     }
 
     static String formatSSID(String wifiSSID) {
@@ -126,18 +141,18 @@ public class WifiHelper {
         return NetworkInterface.getByInetAddress(address);
     }
 
-    public static int getActiveWifiNetworkId(Context context) throws SocketException {
+    public static int getActiveWifiNetworkId(Context context) {
         WifiManager wifiManager = (WifiManager)context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         //Return dynamic information about the current Wi-Fi connection, if any is active.
         return wifiManager.getConnectionInfo().getNetworkId();
     }
 
-    public static byte byteOfInt(int value, int which) {
+    private static byte byteOfInt(int value, int which) {
         int shift = which * 8;
         return (byte)(value >> shift);
     }
 
-    public static InetAddress intToInet(int value) {
+    private static InetAddress intToInet(int value) {
         byte[] bytes = new byte[4];
         for(int i = 0; i<4; i++) {
             bytes[i] = byteOfInt(value, i);

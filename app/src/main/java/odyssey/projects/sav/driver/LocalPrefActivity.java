@@ -1,20 +1,26 @@
 package odyssey.projects.sav.driver;
 
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.sqlite.SQLiteException;
-import android.preference.PreferenceActivity;
 import android.os.Bundle;
+import android.preference.CheckBoxPreference;
+import android.preference.PreferenceActivity;
 import android.support.v7.app.AlertDialog;
 
 import odyssey.projects.callbacks.CallbacksProvider;
 import odyssey.projects.db.Db;
+import odyssey.projects.debug.DebugOut;
 import odyssey.projects.pref.LocalSettings;
+import odyssey.projects.pref.SettingsCache;
 import odyssey.projects.services.MarkOpService;
 
+import static odyssey.projects.utils.network.wifi.Wifi.removeWifiConfiguration;
+
 public class LocalPrefActivity extends PreferenceActivity implements SharedPreferences.OnSharedPreferenceChangeListener {
+
+    private static final String TAG = "LOCAL_PREFERENCES";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -24,7 +30,7 @@ public class LocalPrefActivity extends PreferenceActivity implements SharedPrefe
 
     public void onSharedPreferenceChanged(final SharedPreferences sharedPreferences, String key) {
 
-        final Context context = this;
+        final PreferenceActivity context = this;
 
         // Останавливаем менеджер управления отметками.
         stopService(new Intent(LocalPrefActivity.this, MarkOpService.class));
@@ -38,7 +44,9 @@ public class LocalPrefActivity extends PreferenceActivity implements SharedPrefe
                 // Сбрасываем значение обратно на FALSE, тем самым имитируя исполнение команды.
                 sharedPreferences.edit().putBoolean(key, false).apply();
                 // Перезагружаем окно настроек.
-                addPreferencesFromResource(R.xml.admin_settings);
+                //addPreferencesFromResource(R.xml.admin_settings);
+                CheckBoxPreference chkBox = (CheckBoxPreference) super.findPreference(LocalSettings.SP_ALL_DB_REMOVE);
+                chkBox.setChecked(false);
 
                 // Настраиваем диалоговое окно очистки БД и локальных настроек.
                 new AlertDialog.Builder(context)
@@ -69,12 +77,14 @@ public class LocalPrefActivity extends PreferenceActivity implements SharedPrefe
                                     CallbacksProvider.getLoopsCountListener().LoopsUpdated(0);
                                 }
 
+                                LocalSettings.getInstance(context).restAllSettings();
+
+                                //////////////////////////////////////////////////////////////
+                                // Настраиваем диалоговое окно информирования об окончании очистки БД.
                                 // Формируем сообщение о результате очистки.
                                 final String mess = result?"Данные очищены.":"Ошибка очистки!";
                                 final int res = result?R.drawable.info_success_48:R.drawable.info_error_48;
 
-                                //////////////////////////////////////////////////////////////
-                                // Настраиваем диалоговое окно информирования об окончании очистки БД.
                                 new AlertDialog.Builder(context)
                                         .setIcon(res)
                                         .setTitle(mess)
@@ -89,6 +99,8 @@ public class LocalPrefActivity extends PreferenceActivity implements SharedPrefe
 
                                 // Стираем текущее ТС.
                                 sharedPreferences.edit().putString(LocalSettings.SP_VEHICLE, "").apply();
+                                // После сброса могут измениться многие настройки. Поэтому просто пересоздаем окно.
+                                context.recreate();
                                 // Закрываем текущее диалоговое окно.
                                 dialog.cancel();
                             }
@@ -102,6 +114,45 @@ public class LocalPrefActivity extends PreferenceActivity implements SharedPrefe
                         })
                         .create()
                         .show();
+            }
+        } else
+        if (key.equals(LocalSettings.SP_WIFI_CONFIG_RESET)) {
+
+            if (sharedPreferences.getBoolean(key, false)){
+
+                sharedPreferences.edit().putBoolean(key, false).apply();
+
+                CheckBoxPreference chkBox = (CheckBoxPreference) super.findPreference(LocalSettings.SP_WIFI_CONFIG_RESET);
+                chkBox.setChecked(false);
+
+                DebugOut.generalPrintInfo(context, "Выполняется запрос на очистку текущих сохраненных настроек WiFi соединения ...", TAG);
+
+                boolean result = removeWifiConfiguration(context, SettingsCache.ALLOWED_WIFI_SSID);
+
+                if (result){
+                    DebugOut.generalPrintInfo(context, "Настройки WiFi соединения успешно очищены. Они будут пересозданы заново при первой же попытке соединения.", TAG);
+                } else {
+                    DebugOut.generalPrintError(context, "Настройки WiFi соединения не удалось очистить. Попробуйте сделать это вручную через общие настройки Android.", TAG);
+                }
+
+
+                //////////////////////////////////////////////////////////////
+                // Настраиваем диалоговое окно информирования об окончании очистки настроек.
+                // Формируем сообщение о результате очистки.
+                final String mess = result?"Настройки WiFi очищены.":"Ошибка очистки!";
+                final int res = result?R.drawable.info_success_48:R.drawable.info_error_48;
+
+                new AlertDialog.Builder(context)
+                        .setIcon(res)
+                        .setTitle(mess)
+                        .setPositiveButton("Ок", new DialogInterface.OnClickListener(){
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.cancel();
+                            }
+                        })
+                        .create()
+                        .show();
+                //////////////////////////////////////////////////////////////
             }
         }
 

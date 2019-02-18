@@ -13,6 +13,7 @@ public class Settings {
     public static final String ALLOWED_WIFI_DEFAULT_BSSID = "C0:4A:00:DA:A2:82";
     //public static final String ALLOWED_WIFI_DEFAULT_SSID  = "Magnetom";
     public static final String ALLOWED_WIFI_DEFAULT_SSID  = "Sav";
+    public static final String DEFAULT_WIFI_PASSWORD = "localnvk";
 
     // Client remote access token.
     static final String CLIENT_REQUEST_TOKEN =   "F284F583BJB78IF3U8H458WUBFG8V356W8IEUF";
@@ -24,4 +25,6 @@ public class Settings {
     static final String GENERAL_SUCCESS  = "success";
 
     public static final String ACTION_TYPE_CMD = "cmd";
+
+
 }

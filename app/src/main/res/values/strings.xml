@@ -18,6 +18,7 @@
     <string name="sp_use_bssid_filter">use_bssid_filter</string>
     <string name="sp_pref_wifi_ssid">pref_wifi_ssid</string>
     <string name="sp_pref_wifi_bssid">pref_wifi_bssid</string>
+    <string name="wifi_config_reset">wifi_config_reset</string>
     <string name="sp_not_first_join">not_first_join</string>
     <string name="sp_all_db_remove">all_db_remove</string>
     <string name="sp_use_vibration">use_vibration</string>

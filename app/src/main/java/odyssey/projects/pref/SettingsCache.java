@@ -10,6 +10,9 @@ public final class SettingsCache {
     public static boolean USE_SSID_FILTER    = true;
     public static String  ALLOWED_WIFI_BSSID = "";
     public static String  ALLOWED_WIFI_SSID  = "";
+           static boolean WIFI_CONFIG_RESET = false;
+    public static boolean WIFI_AUTO_CONFIGURED = false;
+
 
     public static boolean USE_VIBRO         = true;
     public static boolean USE_MUSIC         = true;

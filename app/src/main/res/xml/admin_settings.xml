@@ -46,6 +46,11 @@
             android:dialogTitle="Введите BSSID в формате (00:00:00:00:00:00)"
             android:defaultValue="00:00:00:00:00:00"/>
 
+        <CheckBoxPreference
+            android:key="@string/wifi_config_reset"
+            android:title="Реконфигурировать Wi-Fi"
+            android:summary="Сбросить текущие настройки соединения на актуальные значения." />
+
     </PreferenceCategory>
     <PreferenceCategory
         android:title="Управление базой данных">

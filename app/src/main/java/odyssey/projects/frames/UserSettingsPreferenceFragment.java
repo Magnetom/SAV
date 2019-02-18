@@ -8,13 +8,15 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AlertDialog;
-import com.takisoft.fix.support.v7.preference.PreferenceFragmentCompat;
 import android.view.View;
+
+import com.takisoft.fix.support.v7.preference.PreferenceFragmentCompat;
 
 import odyssey.projects.callbacks.CallbacksProvider;
 import odyssey.projects.db.Db;
 import odyssey.projects.pref.LocalSettings;
 import odyssey.projects.sav.driver.R;
+import odyssey.projects.utils.network.StrHelper;
 
 public final class UserSettingsPreferenceFragment extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener{
 
@@ -40,6 +42,8 @@ public final class UserSettingsPreferenceFragment extends PreferenceFragmentComp
     @Override
     public void onSharedPreferenceChanged(final SharedPreferences sharedPreferences, String key) {
         final Context context = getActivity();
+
+        if (context == null) return;
 
         if (key.equals(LocalSettings.SP_ALL_DB_REMOVE)) {
             //Preference connectionPref = findPreference(key);
@@ -111,6 +115,10 @@ public final class UserSettingsPreferenceFragment extends PreferenceFragmentComp
                         .create()
                         .show();
             }
+        } else
+            // Перепроверяем данные, которые ввел пользователь и удаляем ненужные символы из имени SSID, если таковые есть.
+        if (key.equals(LocalSettings.SP_ALLOWED_WIFI_SSID)) {
+            sharedPreferences.edit().putString(key, StrHelper.trimSpaces(sharedPreferences.getString(key, ""))).apply();
         }
 
         // Обновляем настройки в кеше настроек.
