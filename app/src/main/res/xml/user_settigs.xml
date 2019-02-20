@@ -9,7 +9,7 @@
 
         <Preference
             android:title="Версия"
-            android:summary="1.17.01"
+            android:summary="1.17.02"
             android:selectable="false"/>
     </PreferenceCategory>
 
