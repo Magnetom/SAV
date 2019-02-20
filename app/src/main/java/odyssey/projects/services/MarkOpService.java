@@ -185,24 +185,6 @@ public final class MarkOpService extends Service {
         Log.i(TAG, "MarkManager was init successfully.");
     }
 
-    private void initForeground_tst(){
-
-        int NOTIFICATION_ID = 234;
-
-        Context ctx = getApplicationContext();
-        String CHANNEL_ID = "my_channel_01";
-        Bitmap icon = BitmapFactory.decodeResource(getResources(),R.drawable.favicon);
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(ctx, CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle("Учет рейсов")
-                .setContentText("Служба автоматических отметок запущена.")
-                .setSmallIcon(R.drawable.favicon)
-                .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 128, false))
-                .setOngoing(true);
-
-        startForeground(NOTIFICATION_ID, builder.build());
-    }
-
     private void initForeground(){
 
         int NOTIFICATION_ID = 234;
@@ -257,36 +239,6 @@ public final class MarkOpService extends Service {
 
         //notificationManager.notify(NOTIFICATION_ID, builder.build());
         startForeground(NOTIFICATION_ID, builder.build());
-    }
-
-    private void initForeground_old(){
-
-
-        /*
-        Intent notificationIntent = new Intent(this, MainActivity.class);
-        notificationIntent.setAction("ru.odyssey.aura.action.main");
-        //notificationIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        //notificationIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        //notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
-        */
-
-        Bitmap icon = BitmapFactory.decodeResource(getResources(),R.drawable.favicon);
-
-
-        Notification notification = new NotificationCompat.Builder(this)
-                .setContentTitle("Учет рейсов")
-                .setTicker("Учет рейсов")
-                //.setContentText("Нажмите, чтобы перейти в приложение.")
-                .setContentText("Служба автоматических отметок запущена.")
-                .setSmallIcon(R.drawable.favicon)
-                .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 128, false))
-                //.setContentIntent(pendingIntent)
-                .setOngoing(true)
-                .build();
-
-        startForeground(101, notification);
     }
 
     private final class WifiNetworkLastState{
@@ -351,6 +303,7 @@ public final class MarkOpService extends Service {
 
                         // Текущая активная сеть WiFi?
                         if (WifiHelper.isWiFiNetwork(context)) {
+
                             Log.i(TAG, "WiFi network is active.");
 
                             //////////////////////////////////
@@ -358,31 +311,32 @@ public final class MarkOpService extends Service {
                             //////////////////////////////////
 
                             // Получаем имя Wi-Fi сети. Очищаем его от лишних символов и знаокв ковычек.
-                            //final String real_SSID = Objects.requireNonNull(WifiHelper.getWifiSSID(context)).trim().replace("\"", "");
-                            final String real_SSID = WifiHelper.trimQuotes(WifiHelper.getWifiSSID(context));
+                            final String real_SSID = WifiHelper.getWifiSSID(context);
 
                             // Проврека фильтра по имени WiFi сети.
                             if (useSSIDFilter) {
                                 Log.i(TAG, "WiFi SSID check is enabled. Doing it ...");
+                                DebugOut.generalPrintInfo(context, "Фильтр SSID активен. Проверка...", TAG);
 
                                 // Если разрешенный не соответствует реальному, то завершаем попытку отметки.
-                                if (!AllowedSSID.equalsIgnoreCase(real_SSID)) {
+                                if (! WifiHelper.areSsidEqual(AllowedSSID, real_SSID) ) {
 
                                     Log.i(TAG, "Current WiFi SSID " + real_SSID + " is not allowed by setting file!");
                                     Log.i(TAG, "Waiting for another WiFi network... Postpone " + TIMEOUT_WIFI_SSID_CHK_FAILED / SECONDS_1 + " sec. Change status to: {ACTIVATED}");
-                                    DebugOut.generalPrintInfo(context, "SSID имя {" + real_SSID + "} текущего WiFi соединения не одобрено настройками приложения. Пауза в " + TIMEOUT_WIFI_SSID_CHK_FAILED / SECONDS_1 + " секунд.", TAG);
-
-                                    // Инициируем соединение с определенной WiFi сетью для работы приложения.
-                                    triggerConnectToApplicationWiFi();
+                                    DebugOut.generalPrintWarning(context, "SSID имя " + real_SSID + " текущего WiFi соединения не одобрено настройками приложения. Пауза в " + TIMEOUT_WIFI_SSID_CHK_FAILED / SECONDS_1 + " секунд.", TAG);
 
                                     // Проверим доступность нужной нам сети через несколько секунд.
                                     queueHandler.sendMessageDelayed(Message.obtain(msg), TIMEOUT_WIFI_SSID_CHK_FAILED);
                                     sendStatusReport(StatusEnum.ACTIVATED);
 
+                                    // Инициируем соединение с определенной WiFi сетью для работы приложения.
+                                    triggerConnectToApplicationWiFi();
+
                                     return;
                                 }
                                 {
                                     Log.i(TAG, "Ok, SSID " + real_SSID + " is allowed.");
+                                    DebugOut.generalPrintInfo(context, "SSID имя " + real_SSID + " текущего WiFi соединения одобрено.", TAG);
                                 }
                             }
 
@@ -402,18 +356,19 @@ public final class MarkOpService extends Service {
                                 if (!AllowedBSSID.equalsIgnoreCase(real_BSSID)) {
                                     Log.i(TAG, "Current WiFi BSSID " + real_BSSID + " is not allowed by setting file!");
                                     Log.i(TAG, "Waiting for another WiFi router... Postpone " + TIMEOUT_WIFI_BSSID_CHK_FAILED / SECONDS_1 + " sec. Change status to: {ACTIVATED}");
-                                    DebugOut.generalPrintInfo(context, "BSSID текущего WiFi роутера " + real_BSSID + " не одобрено настройками приложения. Отметка отложена на " + TIMEOUT_WIFI_BSSID_CHK_FAILED / SECONDS_1 + " секунд.", TAG);
-
-                                    // Инициируем соединение с определенной WiFi сетью для работы приложения.
-                                    triggerConnectToApplicationWiFi();
+                                    DebugOut.generalPrintWarning(context, "BSSID текущего WiFi роутера " + real_BSSID + " не одобрено настройками приложения. Отметка отложена на " + TIMEOUT_WIFI_BSSID_CHK_FAILED / SECONDS_1 + " секунд.", TAG);
 
                                     // Проверим доступность нужной нам сети через несколько секунд.
                                     queueHandler.sendMessageDelayed(Message.obtain(msg), TIMEOUT_WIFI_BSSID_CHK_FAILED);
                                     sendStatusReport(StatusEnum.ACTIVATED);
 
+                                    // Инициируем соединение с определенной WiFi сетью для работы приложения.
+                                    triggerConnectToApplicationWiFi();
+
                                     return;
                                 } else {
                                     Log.i(TAG, "Ok, BSSID " + real_BSSID + " is allowed.");
+                                    DebugOut.generalPrintInfo(context, "BSSID текущего WiFi роутера " + real_BSSID + " одобрено.", TAG);
                                 }
                             }
 
@@ -615,11 +570,11 @@ public final class MarkOpService extends Service {
                             DebugOut.generalPrintWarning(context, "Активная WiFi сеть не обнаружена.\r\nПауза " + TIMEOUT_WIFI_UNAVAILABLE / SECONDS_1 + " сек.", TAG);
                             Log.i(TAG, "Warning: WiFi network is not active! Postpone " + TIMEOUT_WIFI_UNAVAILABLE / SECONDS_1 + " sec. Change status to: {ACTIVATED}");
 
-                            // Инициируем соединение с определенной WiFi сетью для работы приложения.
-                            triggerConnectToApplicationWiFi();
-
                             // Проверим доступность сети через несколько секунд.
                             postponeNextMarkAttempt(msg, TIMEOUT_WIFI_UNAVAILABLE, false);
+
+                            // Инициируем соединение с определенной WiFi сетью для работы приложения.
+                            triggerConnectToApplicationWiFi();
 
                             sendStatusReport(StatusEnum.ACTIVATED);
                         }
@@ -633,11 +588,11 @@ public final class MarkOpService extends Service {
                         // модуль WiFi.
                         //wifiLastState = new WifiNetworkLastState(WifiStatus.DISABLED, -1);
 
-                        // Инициируем соединение с определенной WiFi сетью для работы приложения.
-                        triggerConnectToApplicationWiFi();
-
                         // Проверим статус модуля WiFi через некоторое время.
                         queueHandler.sendMessageDelayed(Message.obtain(msg), TIMEOUT_WIFI_DISABLED);
+
+                        // Инициируем соединение с определенной WiFi сетью для работы приложения.
+                        triggerConnectToApplicationWiFi();
 
                         sendStatusReport(StatusEnum.ACTIVATED);
                     }
@@ -688,7 +643,7 @@ public final class MarkOpService extends Service {
             wifiLastState.setStatus(WifiStatus.ENABLED);
             try {
                 wifiLastState.setNetworkId(WifiHelper.getActiveWifiNetworkId(getApplicationContext()));
-            } catch (SocketException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
                 wifiLastState.setNetworkId(-1);
             }
@@ -1001,7 +956,12 @@ public final class MarkOpService extends Service {
             else
                 DebugOut.generalPrintInfo(context, "Форсирование текущей отметки.", TAG);
         } else {
-            DebugOut.generalPrintWarning(context, "Форсирование отметки в настоящий момент невозможно!", TAG);
+            String extra = "";
+            if (!queueHandler.hasMessages(MSG_MARK)) extra = "\r\n- в очереди сообщений нет отложенного запроса на отметку;";
+            if (srvResponseStatus.equalsIgnoreCase(SRV_MARKER_POSTPONE)) extra += "\r\n- задание было отложено по причине преждевременной попытки отметится;";
+            if (srvResponseStatus.equalsIgnoreCase(SRV_MARKER_BLOCKED))  extra += "\r\n- задание было отложено по причине блокировки клиента;";
+
+            DebugOut.generalPrintWarning(context, "Форсирование отметки в настоящий момент невозможно! Причина(-ы):"+extra, TAG);
         }
     }
 
@@ -1069,7 +1029,6 @@ public final class MarkOpService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        //stop();
         DebugOut.generalPrintWarning(getApplicationContext(), "Сервис автоматической отметки автотранспорта остановлен!", TAG);
     }
 
