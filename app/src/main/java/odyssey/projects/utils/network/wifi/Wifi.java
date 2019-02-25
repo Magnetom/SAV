@@ -172,7 +172,11 @@ public class Wifi {
                         Log.i(TAG, "WiFi module is enable now.");
 
                         // Отписываемся от сообщений системы касаемых изменения состояния модуля.
-                        context.getApplicationContext().unregisterReceiver(this);
+                        try {
+                            context.getApplicationContext().unregisterReceiver(this);
+                        } catch (IllegalArgumentException e){
+                            e.printStackTrace();
+                        }
 
                         /////////////////////////////////////////////////////////////
                         // Шаг #4.1: Проверка существования уже имеющихся настроек //
@@ -232,7 +236,11 @@ public class Wifi {
                                 }
                                 Log.i(TAG, "Unregister Receiver [ScanResultsAvailable].");
                                 // Отписываемся от сообщений системы о результатах сканирования.
-                                context.getApplicationContext().unregisterReceiver(this);
+                                try {
+                                    context.getApplicationContext().unregisterReceiver(this);
+                                } catch (IllegalArgumentException e){
+                                    e.printStackTrace();
+                                }
                             }
                         }, new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
                         // Начать сканирование.

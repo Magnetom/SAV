@@ -2,7 +2,6 @@ package odyssey.projects.adapters;
 
 import android.app.Activity;
 import android.content.Context;
-import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,40 +28,44 @@ public class LogAdapter extends BaseAdapter {
         return list;
     }
 
-    public void addItem (LogItem item){
-        list.add(item);
+    public synchronized void addItem (final LogItem item){
 
-        // Проверяем общее количество строк в логе событий. Если оно превышает установленный предел - удаляем самое старое сообщение.
-        if (list.size() > SettingsCache.DEBUG_LOG_MAX_LINES){
-            if (!list.isEmpty()) list.remove(0);
-        }
+        ((Activity)context).runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                // Добавляем объект в список.
+                list.add(item);
 
-        // Получаем указатель на экземпляр активити, содержащую графические компоненты, доступ к которым
-        // нам необходим.
-        Activity activity = (Activity) context;
-        // Проверяем, является ли текущий поток основным UI-потоком. Это необходимо, так как текущая функция
-        // может быть вызвана асинхронно из любого потока приложения.
-        boolean isOnUiThread = Thread.currentThread() == Looper.getMainLooper().getThread();
-        // Если текущий поток, вызвавший эту функцию, не является UI-потоком, то запускаем обновление
-        // (функция notifyDataSetChanged()) графических элементов из UI-потока. В противном случае приложение вызовет исключение
-        // и будет закрыто.
-        if (!isOnUiThread){
-            activity.runOnUiThread(new Runnable() {
+                // Проверяем общее количество строк в логе событий. Если оно превышает установленный предел - удаляем самое старое сообщение.
+                if (list.size() > SettingsCache.DEBUG_LOG_MAX_LINES){
+                    if (!list.isEmpty()) list.remove(0);
+                }
+                // Информируем графический элемент, содержащий данный адаптер о том, что набор данных изменен.
+                notifyDataSetChanged();
+            }
+        });
+    }
+
+    public synchronized void clear(){
+
+        ((Activity)context).runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                // Очищаем коллекцию.
+                list.clear();
+                // Информируем графический элемент, содержащий данный адаптер о том, что набор данных изменен.
+                notifyDataSetChanged();
+            }
+        });
+    }
+
+    private void notifyDataSetChangedUI(){
+        ((Activity)context).runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     notifyDataSetChanged();
                 }
             });
-        } else {
-            // Если вызов текущей функции (addItem()) вызван из основного UI-потока, то просто вызываем функцию обновления
-            // визуальных компонентов (в данном случае - ListView).
-            notifyDataSetChanged();
-        }
-    }
-
-    public void clear(){
-        list.clear();
-        notifyDataSetChanged();
     }
 
     @Override
@@ -85,12 +88,16 @@ public class LogAdapter extends BaseAdapter {
 
         if (convertView == null) convertView = LayoutInflater.from(this.context).inflate(R.layout.debug_log_item, null);
 
+        if (convertView ==null) return null;
+
         TextView tag  = convertView.findViewById(R.id.tagTextView);
         TextView type = convertView.findViewById(R.id.typeTextView);
         TextView time = convertView.findViewById(R.id.timeTextView);
         TextView mess = convertView.findViewById(R.id.messageTextView);
 
         LogItem item = (LogItem)getItem(position);
+
+        if (item == null) return null;
 
         tag.setText((item.tag!=null)?item.tag:"DEFAULT_TAG");
         type.setText((item.type!=null)?item.type.toString():"UNKNOWN_TYPE");

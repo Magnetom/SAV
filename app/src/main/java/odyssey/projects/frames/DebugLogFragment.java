@@ -57,7 +57,7 @@ public final class DebugLogFragment extends Fragment {
 
     // Основная инициализация.
     private void mainInit(){
-        logViewer = new LogViewer(getActivity());
+        logViewer = new LogViewer(getContext());
         // Инициализируем слушателей.
         initListeners();
     }

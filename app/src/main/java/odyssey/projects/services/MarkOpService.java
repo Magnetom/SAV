@@ -475,8 +475,8 @@ public final class MarkOpService extends Service {
                                                 // Сервер вернул статус ошибки! Обрабатываем ее.
                                                 if (srvResponseStatus.equals(SRV_MARKER_ERROR)) {
 
-                                                    DebugOut.generalPrintError(context, jsonObject.getString(SRV_MARKER_DETAILS), TAG);
-                                                    DebugOut.generalPrintError(context, "Сервер вернул статус ошибки!\r\nДетали:\r\n" + jsonObject.getString("details") + "\r\nПауза " + TIMEOUT_SERVER_OWN_FATAL / SECONDS_1 + " сек.", TAG);
+                                                    //DebugOut.generalPrintError(context, jsonObject.getString(SRV_MARKER_DETAILS), TAG);
+                                                    DebugOut.generalPrintError(context, "Сервер вернул статус ошибки!\r\nДетали:\r\n" + jsonObject.getString(SRV_MARKER_DETAILS) + "\r\nПауза " + TIMEOUT_SERVER_OWN_FATAL / SECONDS_1 + " сек.", TAG);
                                                     Log.i(TAG, "Error was detected. Report 1. Status changed to: {FAIL}");
                                                     Log.i(TAG, "Error was detected. Report 2. Status changed to: {ACTIVATED}");
 
@@ -706,8 +706,14 @@ public final class MarkOpService extends Service {
 
         // Удаляем предыдущий приемник, если таковой имеется.
         if (wifiConnectedReceiver != null){
-            getApplicationContext().unregisterReceiver(wifiConnectedReceiver);
-            wifiConnectedReceiver = null;
+            try {
+                getApplicationContext().unregisterReceiver(wifiConnectedReceiver);
+            } catch (IllegalArgumentException e){
+                //e.printStackTrace();
+                DebugOut.debugPrintException(this, e, TAG);
+            } finally {
+                wifiConnectedReceiver = null;
+            }
         }
 
         DebugOut.generalPrintInfo(getApplicationContext(), "Запущен слушатель нового WiFi подключения.", TAG);
@@ -731,8 +737,16 @@ public final class MarkOpService extends Service {
                         // Ускорить отложенное задание на отметку.
                         boostMarkTask(getApplicationContext(), false);
                         // Отменяем слушателя.
-                        getApplicationContext().unregisterReceiver(this);
-                        wifiConnectedReceiver = null;
+                        // В некоторых случаях отмена регистрации приемника может вызвать исключения. Отлавливаем их
+                        // и продолжаем работу дальше.
+                        try {
+                            getApplicationContext().unregisterReceiver(this);
+                        } catch (IllegalArgumentException e){
+                            //e.printStackTrace();
+                            DebugOut.debugPrintException(context, e, TAG);
+                        } finally {
+                            wifiConnectedReceiver = null;
+                        }
                     } else {
                         Log.i(TAG, "Current WiFi connection is not allowed for the application requirements!");
                         String extra = "";
