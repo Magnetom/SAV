@@ -94,21 +94,30 @@ public class WifiHelper {
         return false;
     }
 
+    /** Получить SSID имя WiFi соединения через Connectivity Manager. */
+    public static String getWifiSSID_Connectivity(final Context context) {
+        ConnectivityManager connMgr = (ConnectivityManager) context.getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo networkInfo = connMgr.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+        // Проверка условий.
+        if (networkInfo == null || networkInfo.getExtraInfo() == null) return null;
+        return networkInfo.getExtraInfo();
+    }
+
     /** Get WiFi network SSID (name). */
     public static String getWifiSSID(final Context context) {
-        WifiInfo info = getWifi(context);
+        WifiInfo info = getWifiInfo(context);
         if (info != null) return info.getSSID();
         return  null;
     }
 
     /** Get WiFi router BSSID (MAC-address). */
     public static String getWifiBSSID(final Context context) {
-        WifiInfo info = getWifi(context);
+        WifiInfo info = getWifiInfo(context);
         if (info != null) return info.getBSSID();
         return  null;
     }
 
-    private static WifiInfo getWifi(final Context context) {
+    private static WifiInfo getWifiInfo(final Context context) {
         WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(WIFI_SERVICE);
         return wifiManager.getConnectionInfo();
     }

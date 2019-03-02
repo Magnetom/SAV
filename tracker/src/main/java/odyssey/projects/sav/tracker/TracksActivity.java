@@ -2,9 +2,9 @@ package odyssey.projects.sav.tracker;
 
 import android.content.Context;
 import android.content.DialogInterface;
+import android.os.Bundle;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.view.View;
 import android.widget.TextView;
 
@@ -46,7 +46,7 @@ public class TracksActivity extends AppCompatActivity {
                 new AlertDialog.Builder(context,R.style.AlertDialogTheme)
 
                         .setView(view)
-                        .setIcon(R.drawable.track)
+                        .setIcon(R.drawable.track_red)
                         .setTitle("Новый маршрут")
                         //.setMessage("Введите имя для нового маршрута.")
                         .setNegativeButton("Отмена", new DialogInterface.OnClickListener() {

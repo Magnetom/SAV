@@ -1,6 +1,5 @@
 package odyssey.projects.services;
 
-import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -15,33 +14,41 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.PowerManager;
-import android.provider.SyncStateContract;
 import android.support.v4.app.NotificationCompat;
-import android.support.v4.app.TaskStackBuilder;
 import android.util.Log;
 
-import com.android.volley.*;
-import com.android.volley.toolbox.*;
+import com.android.volley.NoConnectionError;
+import com.android.volley.RequestQueue;
+import com.android.volley.ServerError;
+import com.android.volley.TimeoutError;
+import com.android.volley.toolbox.Volley;
 
-import org.json.*;
-
-import java.net.SocketException;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import odyssey.projects.callbacks.CallbacksProvider;
 import odyssey.projects.callbacks.LongOpCallback;
 import odyssey.projects.db.Db;
+import odyssey.projects.debug.DebugOut;
 import odyssey.projects.pref.LocalSettings;
+import odyssey.projects.pref.SettingsCache;
+import odyssey.projects.sav.driver.MainActivity;
+import odyssey.projects.sav.driver.R;
 import odyssey.projects.sav.driver.Settings;
 import odyssey.projects.sav.driver.VolleyWrapper;
-import odyssey.projects.utils.DebugUtils;
 import odyssey.projects.utils.Noise;
-
+import odyssey.projects.utils.network.General;
+import odyssey.projects.utils.network.StrHelper;
+import odyssey.projects.utils.network.wifi.Wifi;
+import odyssey.projects.utils.network.wifi.WifiHelper;
 
 import static odyssey.projects.utils.network.wifi.Wifi.connectToNetworkId;
 import static odyssey.projects.utils.network.wifi.Wifi.disableWifi;
@@ -77,18 +84,27 @@ public final class MarkOpService extends Service {
     // Таймаут в случае выключенного модуля WiFi.
     private static final int TIMEOUT_WIFI_DISABLED         = SECONDS_15;
     // Таймаут в случае отсутствия активного WiFi соединения при попытке отметится.
-    private static final int TIMEOUT_WIFI_UNAVAILABLE   = SECONDS_30;
+    private static final int TIMEOUT_WIFI_UNAVAILABLE      = SECONDS_30;
+    // Таймаут в случае неверного SSID у активного WiFi подключения.
+    private static final int TIMEOUT_WIFI_SSID_CHK_FAILED  = SECONDS_30;
+    // Таймаут в случае неверного BSSID у активного WiFi подключения.
+    private static final int TIMEOUT_WIFI_BSSID_CHK_FAILED = SECONDS_30;
     // Таймаут в случае отсутствия сервера в сети (сбой пинга ip-адреса сервера).
-    private static final int TIMEOUT_SERVER_UNREACHABLE = SECONDS_5;
+    private static final int TIMEOUT_SERVER_UNREACHABLE    = SECONDS_5;
     // Таймаут в случае отсутствия ответа от сервера при Volley-запросе на порт 80 на сервере.
-    private static final int TIMEOUT_SERVER_80_TIMEOUT  = SECONDS_5;
-    // Таймаут в случае, если сервер коррктно вернул в ответе статус ошибки выполнения скрипта.
-    private static final int TIMEOUT_SERVER_OWN_FATAL   = SECONDS_30;
+    private static final int TIMEOUT_SERVER_80_TIMEOUT     = SECONDS_5;
+    // Таймаут в случае, если сервер корректно вернул в ответе статус ошибки выполнения скрипта.
+    private static final int TIMEOUT_SERVER_OWN_FATAL      = SECONDS_30;
+    // Таймаут в случае, если json-ответ от серевера возвращен в неверном формате.
+    private static final int TIMEOUT_JSON_EXCEPTION        = SECONDS_10;
+    // Таймаут в случае, неизвестной ошибки, произошедшей на сервере.
+    private static final int TIMEOUT_UNKNOWN_SERVER_ERROR  = SECONDS_10;
+    // Таймаут в случае, общей ошибки, произошедшей на сервере.
+    private static final int TIMEOUT_SERVER_GENERAL_ERROR  = SECONDS_10;
 
     /* Блок установок времени */
     // Продолжительность свечения экрана после удачной отметки.
     private static final int DURATION_SCREEN_WAKE_UP = SECONDS_10;
-
 
 
     private static final int MSG_MARK    = 1;
@@ -114,8 +130,6 @@ public final class MarkOpService extends Service {
     // Заблокирована ли возможность отмечаться на сервере. Это необходимо для обеспечения необходимой паузы
     // между последовательными отметками.
     private boolean markBlocked;
-
-    private boolean useSSIDFilter;
 
     // Транспортное средство, отметки о котором передаются в настоящий момент.
     private String Vehicle;
@@ -311,7 +325,8 @@ public final class MarkOpService extends Service {
                             //////////////////////////////////
 
                             // Получаем имя Wi-Fi сети. Очищаем его от лишних символов и знаокв ковычек.
-                            final String real_SSID = WifiHelper.getWifiSSID(context);
+                            //final String real_SSID = WifiHelper.getWifiSSID(context);
+                            final String real_SSID = WifiHelper.getWifiSSID_Connectivity(context);
 
                             // Проврека фильтра по имени WiFi сети.
                             if (useSSIDFilter) {
@@ -347,10 +362,11 @@ public final class MarkOpService extends Service {
                             // MAC-адрес WiFi сети. Здесь можно сделать ее проверку.
                             final String real_BSSID = WifiHelper.getWifiBSSID(context);
 
-                        // Проврека WiFi SSID, если установлено в натройках.
-                        if (useSSIDFilter){
+                            // Проврека WiFi BSSID, если установлено в натройках.
+                            if (useBSSIDFilter) {
 
-                            Log.i(TAG, "WiFi SSID check is enabled. Doing it ...");
+                                Log.i(TAG, "WiFi BSSID check is enabled. Doing it ...");
+                                DebugOut.generalPrintInfo(context, "Фильтр BSSID активен. Проверка...", TAG);
 
                                 // Если разрешенный не соответствует реальному, то завершаем попытку отметки.
                                 if (!AllowedBSSID.equalsIgnoreCase(real_BSSID)) {
@@ -446,27 +462,32 @@ public final class MarkOpService extends Service {
                                                     // Отчет о статусе.
                                                     sendStatusReport(StatusEnum.IDLE);
 
-                                                boolean useVibro = settings.getBoolean(LocalSettings.SP_USE_VIBRO);
-                                                boolean useMusic = settings.getBoolean(LocalSettings.SP_USE_MUSIC);
-                                                // Проигрываем мелодию и/или делаем вибро, если необходимо.
-                                                if (useMusic || useVibro){
-                                                    // Проигрываем небольшой звуковой фрагмент в случае успешной отметки.
-                                                    if (useMusic) Noise.playSound(context);
-                                                    // Делаем небольшую вибрацию в случае успешной отметки.
-                                                    if (useVibro) Noise.doVibro(context);
+                                                    boolean useVibro = SettingsCache.USE_VIBRO;
+                                                    boolean useMusic = SettingsCache.USE_MUSIC;
+
+                                                    // Проигрываем мелодию и/или делаем вибро, если необходимо.
+                                                    if (useMusic || useVibro) {
+                                                        // Проигрываем небольшой звуковой фрагмент в случае успешной отметки.
+                                                        if (useMusic) Noise.playSound(context);
+                                                        // Делаем небольшую вибрацию в случае успешной отметки.
+                                                        if (useVibro) Noise.doVibro(context);
+                                                    }
+
+                                                    boolean useScreenWakeUp = SettingsCache.USE_SCREEN_WAKEUP;
+                                                    if (useScreenWakeUp) screenWakeUp(context);
+
+                                                    Log.i(TAG, "Mark done successfully. Timeout " + delay / MINUTES_1 + " min. Changed status to {IDLE}.");
+                                                    DebugOut.generalPrintInfo(context, "Произведена успешная отметка " + Vehicle + " на сервере.\r\nСледующая попытка состоится через " + delay / MINUTES_1 + " мин.", TAG);
+
+                                                    // Действия после успешной отметки.
+                                                    postMarkActions();
+                                                } else {
+                                                    // Отчет о статусе.
+                                                    sendStatusReport(StatusEnum.POSTPONE);
+                                                    Log.i(TAG, "Mark postponed (delay " + delay / MINUTES_1 + " min). Changed status to {POSTPONE}.");
+                                                    DebugOut.generalPrintInfo(context, "Отметка " + Vehicle + " невозможна еще " + delay / MINUTES_1 + " мин.", TAG);
                                                 }
-
-                                                boolean useScreenWakeUp = settings.getBoolean(LocalSettings.SP_USE_SCREEN_WAKEUP);
-                                                if (useScreenWakeUp) screenWakeUp(context);
-
-                                                Log.i(TAG, "Mark done successfully. Timeout "+delay/MINUTES_1+" min. Changed status to {IDLE}.");
-                                            } else {
-                                                // Отчет о статусе.
-                                                sendStatusReport(StatusEnum.POSTPONE);
-                                                Log.i(TAG, "Mark postponed (delay "+delay/MINUTES_1+" min). Changed status to {POSTPONE}.");
-                                                DebugUtils.toastPrintInfo(context,"Отметка невозможна еще "+delay/MINUTES_1+" мин.", TAG);
-                                            }
-
+                                                markStarted = false;
                                                 // Взводим курок заново ...
                                                 postponeNextMarkAttempt(msg_copy, delay, false);
 
@@ -509,14 +530,18 @@ public final class MarkOpService extends Service {
                                                     return;
                                                 }
 
+                                            }
+                                        } catch (JSONException e) {
+                                            DebugOut.debugPrintException(context, e, TAG);
+                                            DebugOut.generalPrintWarning(context, "Неизвестная ошибка на сервере!\r\nПодробнее:\r\n" + e.getLocalizedMessage(), TAG);
+
+                                            // Взводим курок заново ...
+                                            postponeNextMarkAttempt(msg_copy, TIMEOUT_JSON_EXCEPTION, true);
+
+                                            e.printStackTrace();
+                                           return;
                                         }
-                                    } catch (JSONException e){
-                                        recoverAfterFail();
-                                        e.printStackTrace();
-                                        DebugUtils.debugPrintException(context,e, TAG);
-                                        DebugUtils.toastPrintWarning(context,"Неизвестная ошибка на сервере! Служба отметок остановлена.\r\nПодробнее:\r\n"+e.getLocalizedMessage(), TAG);
                                     }
-                                }
 
                                     @Override
                                     public void onError(Object obj) {
@@ -698,12 +723,8 @@ public final class MarkOpService extends Service {
     }
 
     private BroadcastReceiver wifiConnectedReceiver = null;
-    // Регистрируется приемник широковещательных сообщений о подключении к нужной WiFi-сети.
-    private void reloadApplicationWifiConnectedListener(){
 
-        IntentFilter filters = new IntentFilter();
-        filters.addAction("android.net.conn.CONNECTIVITY_CHANGE");
-
+    private void removeWiFiBroadcastReceiver(){
         // Удаляем предыдущий приемник, если таковой имеется.
         if (wifiConnectedReceiver != null){
             try {
@@ -715,6 +736,18 @@ public final class MarkOpService extends Service {
                 wifiConnectedReceiver = null;
             }
         }
+    }
+
+    // Регистрируется приемник широковещательных сообщений о подключении к нужной WiFi-сети.
+    private void reloadApplicationWifiConnectedListener(){
+
+        IntentFilter filters = new IntentFilter();
+        filters.addAction("android.net.wifi.WIFI_STATE_CHANGED");
+        filters.addAction("android.net.wifi.STATE_CHANGE");
+        filters.addAction("android.net.conn.CONNECTIVITY_CHANGE");
+
+        // Удаляем предыдущий приемник, если таковой имеется.
+        removeWiFiBroadcastReceiver();
 
         DebugOut.generalPrintInfo(getApplicationContext(), "Запущен слушатель нового WiFi подключения.", TAG);
 
@@ -725,13 +758,21 @@ public final class MarkOpService extends Service {
 
                 Log.i(TAG, "Registered WiFi connectivity changes ...");
 
-                final WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+                WifiManager wifiManager = (WifiManager) context.getApplicationContext().getSystemService(WIFI_SERVICE);
+                WifiInfo wifiInfo = wifiManager.getConnectionInfo();
 
-                if (wifiManager.isWifiEnabled()) {
+                ConnectivityManager connMgr = (ConnectivityManager) getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+                NetworkInfo networkInfo = connMgr.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+
+                if (networkInfo.isConnected() && wifiManager.isWifiEnabled()) {
+
+                    String ssid = networkInfo.getExtraInfo();
+                    if (ssid != null) ssid = StrHelper.trimAll(ssid);
+                    else ssid = "";
 
                     if (isActiveWifiConnectionSuitable()) {
                         DebugOut.generalPrintInfo(getApplicationContext(), "Модуль WiFi включен.", TAG);
-                        DebugOut.generalPrintInfo(getApplicationContext(), "Искомое подключение найдено:\r\nSSID: " + SettingsCache.ALLOWED_WIFI_SSID + "\r\nBSSID: " + SettingsCache.ALLOWED_WIFI_BSSID, TAG);
+                        DebugOut.generalPrintInfo(getApplicationContext(), "Искомое подключение найдено:\r\nSSID: " + ssid, TAG);
                         Log.i(TAG, "Ok, searching connection has been found.\r\nSSID: " + SettingsCache.ALLOWED_WIFI_SSID + "\r\nBSSID: " + SettingsCache.ALLOWED_WIFI_BSSID);
 
                         // Ускорить отложенное задание на отметку.
@@ -739,20 +780,10 @@ public final class MarkOpService extends Service {
                         // Отменяем слушателя.
                         // В некоторых случаях отмена регистрации приемника может вызвать исключения. Отлавливаем их
                         // и продолжаем работу дальше.
-                        try {
-                            getApplicationContext().unregisterReceiver(this);
-                        } catch (IllegalArgumentException e){
-                            //e.printStackTrace();
-                            DebugOut.debugPrintException(context, e, TAG);
-                        } finally {
-                            wifiConnectedReceiver = null;
-                        }
+                        removeWiFiBroadcastReceiver();
                     } else {
                         Log.i(TAG, "Current WiFi connection is not allowed for the application requirements!");
-                        String extra = "";
-                        String ssid = wifiManager.getConnectionInfo().getSSID();
-                        if (ssid != null) extra = StrHelper.trimAll(ssid);
-                        DebugOut.generalPrintWarning(getApplicationContext(), "Обнаружено новое WiFi подключение:\r\nSSID [" + extra + "]\r\n, но оно не соответствует настройкам безопасности приложения.", TAG);
+                        DebugOut.generalPrintWarning(getApplicationContext(), "Обнаружено новое WiFi подключение:\r\nSSID [" + ssid + "]\r\n, но оно не соответствует настройкам безопасности приложения.", TAG);
                     }
                 } else {
                     DebugOut.generalPrintInfo(getApplicationContext(), "Произошло отключение WiFi.", TAG);
@@ -839,6 +870,7 @@ public final class MarkOpService extends Service {
             }
             */
             ///////////////////////////////////////////////////////////////////////////////////
+            removeWiFiBroadcastReceiver();
 
             // Удаляем из очереди все имеющиеся сообщения, если таковые имеются.
             queueHandler.removeCallbacksAndMessages(null);
@@ -848,7 +880,11 @@ public final class MarkOpService extends Service {
             sendStatusReport(StatusEnum.STOPPED);
             // Освобождаем ресурсы процессора по обработке потока отметок.
             serviceWakeUnlock();
-            Log.i(TAG, "Stop request was detected! Status changed to {STOPPED}.");
+            // Переводим сервис в режим background.
+            stopForeground(true);
+            // Останавливаем сервис.
+            stopSelf();
+
             return true;
         }
         return false;
@@ -894,18 +930,18 @@ public final class MarkOpService extends Service {
         clrStopRequest();
 
         // Проверяем флаг глобального разрешения/запрещения работы приложения
-        Boolean globEnable = settings.getBoolean(LocalSettings.SP_GLOBAL_ENABLE);
+        boolean globEnable = SettingsCache.GLOBAL_ENABLE;
         if (!globEnable){
-            DebugUtils.toastPrintError(context,"Пожалуйста, включите возможность использования программы.", TAG);
+            DebugOut.generalPrintWarning(context,"Пожалуйста, включите возможность использования программы.", TAG);
             sendStatusReport(StatusEnum.STOPPED);
             return false;
         }
 
         // Гос. номер текущего транспортного средства берем из локальных настроек.
-        Vehicle = settings.getText(LocalSettings.SP_VEHICLE);
+        Vehicle = SettingsCache.VEHICLE;
 
         if ((Vehicle == null) || Vehicle.equals("")) {
-            DebugUtils.toastPrintError(context,"Пожалуйста, укажите гос. номер ТС.", TAG);
+            DebugOut.generalPrintWarning(context,"Пожалуйста, укажите гос. номер ТС.", TAG);
             sendStatusReport(StatusEnum.STOPPED);
             return false;
         }
@@ -916,14 +952,15 @@ public final class MarkOpService extends Service {
         AllowedSSID = SettingsCache.ALLOWED_WIFI_SSID;
 
         // Требуется ли фильтр по MAC-адресу.
-        useSSIDFilter = settings.getBoolean(LocalSettings.SP_USE_SSID_FILTER);
-        // Из локальных настроек считываем разрешенный SSID маршрутизатора.
-        AllowedSSID = settings.getText(LocalSettings.SP_ALLOWED_WIFI_SSID);
+        useBSSIDFilter = SettingsCache.USE_BSSID_FILTER;
+        // Из локальных настроек считываем разрешенный BSSID маршрутизатора.
+        AllowedBSSID = SettingsCache.ALLOWED_WIFI_BSSID;
+
         // Считываем адрес сервера.
-        ServerAddress = settings.getText(LocalSettings.SP_SERVER_ADDRESS);
+        ServerAddress = SettingsCache.SERVER_ADDRESS;
 
         if (ServerAddress == null || ServerAddress.equals("")){
-            DebugUtils.toastPrintError(context,"Пожалуйста, укажите адрес удаленного сервера в настройках вашего приложения!", TAG);
+            DebugOut.generalPrintWarning(context,"Пожалуйста, укажите адрес удаленного сервера в настройках вашего приложения!", TAG);
             sendStatusReport(StatusEnum.STOPPED);
             return false;
         }
@@ -947,6 +984,15 @@ public final class MarkOpService extends Service {
         // Отсылаем отчет в главное активити.
         sendStatusReport(StatusEnum.ACTIVATED);
         Log.i(TAG, "Run/rerun triggered. Status changed to: {ACTIVATED}");
+
+        DebugOut.generalPrintInfo(context, "Запуск сервиса!", TAG);
+
+        // Запусаем в обработку в потоке первое задание на отметку.
+        boostMarkTask(context, true);
+
+        // Заблокировать возможность остановки сервиса средствами ОС Android после блокировки дисплея.
+        serviceWakeLock(context);
+
         return true;
     }
 
@@ -1048,6 +1094,5 @@ public final class MarkOpService extends Service {
 
     public void stop(){
         setStopRequest();
-        Log.i(TAG, "Stop trigger was requested ...");
     }
 }
