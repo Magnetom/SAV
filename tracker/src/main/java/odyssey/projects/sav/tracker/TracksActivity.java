@@ -73,4 +73,9 @@ public class TracksActivity extends AppCompatActivity {
         });
     }
 
+    @Override
+    protected void onPostResume() {
+        super.onPostResume();
+        if (tracksView != null) tracksView.doUpdate();
+    }
 }

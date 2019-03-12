@@ -12,7 +12,7 @@
         android:layout_marginStart="12dp"
         android:layout_marginTop="8dp"
         android:layout_marginEnd="8dp"
-        android:text="Вы действительно хотите удалить маршрут:"
+        android:text="Вы действительно хотите удалить маршрутную точку:"
         android:textColor="@color/colorTextMedium"
         android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
@@ -20,7 +20,7 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
-        android:id="@+id/trackForDeleteView"
+        android:id="@+id/pointForDeleteView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"

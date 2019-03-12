@@ -1,67 +1,72 @@
 package odyssey.projects.sav.db;
 
-import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.Intent;
 import android.database.Cursor;
 import android.support.annotation.NonNull;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
-
-import java.util.Objects;
 
 import odyssey.projects.sav.SwipeListView.SwipeMenu;
 import odyssey.projects.sav.SwipeListView.SwipeMenuCreator;
 import odyssey.projects.sav.SwipeListView.SwipeMenuItem;
 import odyssey.projects.sav.SwipeListView.SwipeMenuListView;
-import odyssey.projects.sav.adapters.TrackAdapter;
-import odyssey.projects.sav.tracker.PointsActivity;
+import odyssey.projects.sav.adapters.PointsAdapter;
 import odyssey.projects.sav.tracker.R;
 
 import static odyssey.projects.sav.utils.Helper.dp2px;
 
+public class PointsView extends DbProc {
 
-public class TracksView extends DbProc {
+    private final String TAG = "POINTS_VIEW";
 
-    private final String TAG = "TRACKS_VIEW";
+    private PointsAdapter adapter;
 
-    private TrackAdapter adapter;
+    private static long track = -1;
 
-    public TracksView(Context context) {super(context);}
+    public PointsView(Context context, long track) { super(context); setTrack(track);}
 
     @Override
-    SimpleCursorAdapter getAdapter() {return adapter;}
+    SimpleCursorAdapter getAdapter() { return adapter; }
 
     @Override
     void setupAdapter(Context context) {
         // Формируем столбцы сопоставления
         String[] from = new String[] {
-                Db.TABLE_TRACKS_COLUMNS.COLUMN_ID,
-                Db.TABLE_TRACKS_COLUMNS.COLUMN_TRACK,
-                Db.TABLE_TRACKS_COLUMNS.COLUMN_POINTS
+                Db.TABLE_POINTS_COLUMNS.COLUMN_ID,
+                Db.TABLE_POINTS_COLUMNS.COLUMN_TRACK_ID,
+                Db.TABLE_POINTS_COLUMNS.COLUMN_POINT,
+                Db.TABLE_POINTS_COLUMNS.COLUMN_GPS_LATITUDE,
+                Db.TABLE_POINTS_COLUMNS.COLUMN_GPS_LONGITUDE,
+                Db.TABLE_POINTS_COLUMNS.COLUMN_GPS_TOLERANCE,
+                Db.TABLE_POINTS_COLUMNS.COLUMN_ACTIVE
         };
 
-        int[] to = new int[] {  0,                   // [00] Db.COLUMN_ID
-                                R.id.trackNameView,  // [01] Db.COLUMN_TRACK
-                                R.id.pointsCountView // [02]
+        int[] to = new int[] {
+                0,                      // [00] COLUMN_ID
+                0,                      // [01] COLUMN_TRACK_ID
+                R.id.pointNameView,     // [02] COLUMN_POINT
+                R.id.itemLatitudeView,  // [03] COLUMN_GPS_LATITUDE
+                R.id.itemLongitudeView, // [03] COLUMN_GPS_LONGITUDE
+                R.id.toleranceView,     // [04] COLUMN_GPS_TOLERANCE
+                0                       // [05] COLUMN_ACTIVE
         };
 
         // создаем адаптер и настраиваем список
-        adapter = new TrackAdapter(this.context, R.layout.tracks_list_item, null, from, to, 0);
+        adapter = new PointsAdapter(this.context, R.layout.points_list_item, null, from, to, 0);
     }
 
     @Override
     void setupListView() {
 
-        final SwipeMenuListView listView = (((AppCompatActivity) context).findViewById(R.id.trackListView));
+        final SwipeMenuListView listView = (((AppCompatActivity) context).findViewById(R.id.pointsListView));
         if (listView == null) return;
 
         // Настраиваем view для случая пустого списка.
@@ -78,11 +83,11 @@ public class TracksView extends DbProc {
 
 
         // Устанавливаем шапку списка.
-        View list_header = LayoutInflater.from(this.context).inflate(R.layout.tracks_list_header, null);
+        View list_header = LayoutInflater.from(this.context).inflate(R.layout.points_list_header, null);
         listView.addHeaderView(list_header);
 
         // Устанавливаем подвал списка
-        View list_footer = LayoutInflater.from(this.context).inflate(R.layout.tracks_list_footer, null);
+        View list_footer = LayoutInflater.from(this.context).inflate(R.layout.points_list_footer, null);
         listView.addFooterView(list_footer);
 
         listView.setClickable(true);
@@ -128,8 +133,8 @@ public class TracksView extends DbProc {
         };
 
         // Right
-        listView.setSwipeDirection(SwipeMenuListView.DIRECTION_RIGHT);
-        //listView.setSwipeDirection(SwipeMenuListView.DIRECTION_LEFT);
+        //listView.setSwipeDirection(SwipeMenuListView.DIRECTION_RIGHT);
+        listView.setSwipeDirection(SwipeMenuListView.DIRECTION_LEFT);
 
         // set creator
         listView.setMenuCreator(creator);
@@ -151,81 +156,87 @@ public class TracksView extends DbProc {
             @Override
             public boolean onMenuItemClick(int position, SwipeMenu menu, int index) {
 
-                /*
-                // Получаем позицию элемента в списке с учетом невидимых элементов списка и заголовков,
-                // если таоквые имются.
-                int pos = position-listViewFinal.getFirstVisiblePosition();
-                pos += listViewFinal.getHeaderViewsCount();
-                // Получаем указатель на лэйаут выбранного элемента списка.
-                View listItem = listViewFinal.getChildAt(pos);
-                // Проверяем на валидность.
-                if (listItem == null) return false;
-                // Получаем текстовое поле, содержащее имя трека.
-                TextView track_red = listItem.findViewById(R.id.trackNameView);
-                // Проверяем на валидность.
-                if (track_red == null || track_red.getText().toString().equals("")) return false;
-                */
-
-
                 Cursor cursor = (Cursor) listView.getAdapter().getItem(position+ listView.getHeaderViewsCount());
                 if (cursor != null) cursor.moveToPosition(position);
 
-                final String track_id = Objects.requireNonNull(cursor).getString(Db.TABLE_TRACKS_COLUMNS.ID_COLUMN_ID);
-                final String track_name = Objects.requireNonNull(cursor).getString(Db.TABLE_TRACKS_COLUMNS.ID_COLUMN_TRACK);
+                final LocationPoint point = getPoint(cursor);
 
-                switch (index) {
+                if (point == null) return false;
+
+                switch (index){
                     case 0:
-                        ///////////////////////////////////
-                        // Редактирование имени маршрута //
-                        ///////////////////////////////////
-                        View view = ((AppCompatActivity) context).getLayoutInflater().inflate(R.layout.rename_track_dialog, null);
-                        if (view == null) return false;
+                        /////////////////////////////////
+                        // Редактирование имени точки. //
+                        /////////////////////////////////
+                        LayoutInflater inflater = (LayoutInflater) context.getSystemService( Context.LAYOUT_INFLATER_SERVICE );
+                        View view = inflater.inflate(R.layout.rename_point_dialog, null);
 
-                        final TextView trkName = view.findViewById(R.id.renameTrackNameText);
-                        if (trkName != null) trkName.setText(track_name);
+                        final TextView pointName        = view.findViewById(R.id.renamePointNameText);
+                        final TextView pointLatitude    = view.findViewById(R.id.renamePointLatitudeText);
+                        final TextView pointLongitude   = view.findViewById(R.id.renamePointLongitudeText);
+                        final TextView pointTolerance   = view.findViewById(R.id.renamePointToleranceText);
 
+                        pointName.setText(point.name);
+                        pointLatitude.setText(point.latitude);
+                        pointLongitude.setText(point.longitude);
+                        pointTolerance.setText(String.valueOf(point.tolerance));
+
+                        // Настраиваем диалоговое овно присвоения имени новой точке.
                         new AlertDialog.Builder(context,R.style.AlertDialogTheme)
                                 .setView(view)
                                 .setIcon(R.drawable.alert_rename)
-                                .setTitle("Редактирование маршрута")
-                                .setPositiveButton("Ок", new DialogInterface.OnClickListener(){
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        // Переименовываем маршурт только в случае, если пользователь изменил имя.
-                                        if (trkName != null && !trkName.getText().toString().equalsIgnoreCase(track_name)) {
-                                            renameTrack(Integer.valueOf(track_id), trkName.getText().toString());
-                                        }
-                                        // Закрываем текущее диалоговое окно.
-                                        dialog.cancel();
-                                    }
-                                })
+                                .setTitle("Редактирование точки")
+                                //.setMessage("Введите имя для новой точки маршрута.")
                                 .setNegativeButton("Отмена", new DialogInterface.OnClickListener() {
                                     @Override
                                     public void onClick(DialogInterface dialog, int which) {
-                                        // Закрываем текущее диалоговое окно.
+                                        dialog.cancel();
+                                    }
+                                })
+                                .setPositiveButton("Ок", new DialogInterface.OnClickListener(){
+                                    public void onClick(DialogInterface dialog, int which) {
+
+                                        if (pointName.getText().toString().equals(""))       pointName.setText("новая точка");
+                                        if (pointLatitude.getText().toString().equals(""))   pointLatitude.setText("0.000000");
+                                        if (pointLongitude.getText().toString().equals(""))  pointLongitude.setText("0.000000");
+                                        if (pointTolerance.getText().toString().equals(""))  pointTolerance.setText("50");
+
+                                        LocationPoint newPoint = new LocationPoint();
+
+                                        newPoint.id         = point.id;
+                                        newPoint.track_id   = point.track_id;
+                                        newPoint.name       = pointName.getText().toString();
+                                        newPoint.latitude   = pointLatitude.getText().toString();
+                                        newPoint.longitude  = pointLongitude.getText().toString();
+                                        newPoint.tolerance  = Integer.valueOf(pointTolerance.getText().toString());
+                                        newPoint.active     = point.active;
+
+                                        updatePoint(newPoint);
+
                                         dialog.cancel();
                                     }
                                 })
                                 .create()
                                 .show();
+
                         break;
                     case 1:
                         /////////////////////////////////
-                        // Удаление текущего маршрута. //
+                        // Удаление текущей точки.     //
                         /////////////////////////////////
-
-                        view = ((AppCompatActivity) context).getLayoutInflater().inflate(R.layout.remove_track_dialog, null);
+                        view = ((AppCompatActivity) context).getLayoutInflater().inflate(R.layout.remove_point_dialog, null);
                         if (view == null) return false;
 
-                        final TextView trkName_del = view.findViewById(R.id.trackForDeleteView);
-                        if (trkName_del != null) trkName_del.setText(track_name);
+                        final TextView pointName_del = view.findViewById(R.id.pointForDeleteView);
+                        if (pointName_del != null) pointName_del.setText(point.name);
 
-                        new AlertDialog.Builder(context,R.style.AlertDialogTheme)
+                        new android.app.AlertDialog.Builder(context,R.style.AlertDialogTheme)
                                 .setView(view)
                                 .setIcon(R.drawable.alert_attention)
-                                .setTitle("Удаление маршрута")
+                                .setTitle("Удаление точки")
                                 .setPositiveButton("Ок", new DialogInterface.OnClickListener(){
                                     public void onClick(DialogInterface dialog, int which) {
-                                        deleteTrack(Integer.valueOf(track_id));
+                                        deletePoint(point.id);
                                         // Закрываем текущее диалоговое окно.
                                         dialog.cancel();
                                     }
@@ -241,31 +252,20 @@ public class TracksView extends DbProc {
                                 .show();
                         break;
                 }
-                // false : close the menu; true : not close the menu
                 return false;
             }
         });
 
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                // Если произошло нажатие на заголовок или подвал - пропускаем такое нажатие.
-                if (id == -1) return;
-                // Запуск новой активити - "Список точек маршрута".
-                Intent intent = new Intent(context, PointsActivity.class);
-                // Ложим в намеринени дополнительную информацию - номер маршрута, для которого вызывается эта активити.
-                intent.putExtra("track", id);
-                context.startActivity(intent);
-            }
-        });
+//        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+//            @Override
+//            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+//                Intent intent = new Intent(context, PointsActivity.class);
+//                context.startActivity(intent);
+//            }
+//        });
 
         // Присваиваем адаптер для виджета ListView
         listView.setAdapter(adapter);
-    }
-
-    @Override
-    CursorLoader initCursorLoader() {
-        return new MyCursorLoader(this.context, this.db);
     }
 
     @Override
@@ -274,7 +274,12 @@ public class TracksView extends DbProc {
     }
 
     @Override
-    void OnDestroy() {}
+    CursorLoader initCursorLoader() {
+        return new PointsView.MyCursorLoader(this.context, this.db);
+    }
+
+    @Override
+    void OnDestroy() { }
 
     private static class MyCursorLoader extends CursorLoader {
         Db db;
@@ -284,7 +289,14 @@ public class TracksView extends DbProc {
         }
         @Override
         public Cursor loadInBackground() {
-            return  db.getAllTracks();
+            return  db.getTrackPoints(track);
         }
+    }
+
+    public long  getTrack() {return track;}
+    private void setTrack(long track_id) { track = track_id; }
+
+    public String getTrackName(Long track_id){
+        return db.getTrackName(track_id);
     }
 }
