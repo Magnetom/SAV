@@ -21,14 +21,19 @@
     <style name="PreferencesTheme" parent="Theme.AppCompat.Light">
         <item name="android:windowActionBar">true</item>
         <item name="android:windowNoTitle">false</item>
-
+        <!--
         <item name="android:background">@color/colorWhite</item>
+        -->
+        <item name="android:colorBackground">@color/colorWhite</item>
         <item name="android:colorAccent">@color/colorAccent2</item>
         <item name="colorPrimaryDark">@color/colorPrimaryTop</item>
 
 
         <item name="android:textColorPrimary">@color/colorTextDark</item>
         <item name="android:textColorSecondary">@color/colorTextMedium</item>
+
+        <item name="android:alertDialogStyle">@style/AlertDialogTheme</item>
+
         <!--
             <item name="android:editTextPreferenceStyle">@style/AlertDialogTheme</item>
         -->
@@ -37,7 +42,6 @@
          -->
 
     </style>
-
 
     <style name="AlertDialogTheme" parent="Theme.AppCompat.Light.Dialog.Alert">
         <item name="colorPrimaryDark">@color/colorPrimaryTop</item>
