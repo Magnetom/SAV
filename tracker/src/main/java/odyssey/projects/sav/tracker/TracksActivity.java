@@ -2,11 +2,17 @@ package odyssey.projects.sav.tracker;
 
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.Toolbar;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
+
+import java.util.Objects;
 
 import odyssey.projects.sav.db.TracksView;
 
@@ -17,9 +23,19 @@ public class TracksActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_tracks);
+        //setContentView(R.layout.activity_tracks);
+        setContentView(R.layout.activity_tracks_new);
         //Основная инициализация.
         mainInit();
+        // Настройка туулбара.
+        setupToolbar();
+    }
+
+    private void setupToolbar(){
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        Objects.requireNonNull(getSupportActionBar()).setDisplayShowTitleEnabled(false);
+        getSupportActionBar().setDisplayUseLogoEnabled(true);
     }
 
     // Основная инициализация.
@@ -77,5 +93,27 @@ public class TracksActivity extends AppCompatActivity {
     protected void onPostResume() {
         super.onPostResume();
         if (tracksView != null) tracksView.doUpdate();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Получим идентификатор выбранного пункта меню.
+        int id = item.getItemId();
+
+        // Операции для выбранного пункта меню.
+        switch (id) {
+            case R.id.action_settings:
+                // Открываем окно с настройками.
+                startActivityForResult(new Intent(this, LocalPrefActivity.class), 1);
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
     }
 }

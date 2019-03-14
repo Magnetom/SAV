@@ -181,8 +181,8 @@ public class SwipeMenuLayout extends FrameLayout {
 			// Log.i("byz", "downX = " + mDownX + ", moveX = " + event.getX());
 			int dis = (int) (mDownX - event.getX());
 			if (state == STATE_OPEN) {
-				dis += mMenuView.getWidth()*mSwipeDirection;;
-			}
+				dis += mMenuView.getWidth()*mSwipeDirection;
+            }
 			swipe(dis);
 			break;
 		case MotionEvent.ACTION_UP:
@@ -210,26 +210,20 @@ public class SwipeMenuLayout extends FrameLayout {
 	}
 
 	private void swipe(int dis) {
-		if(!mSwipEnable){
-			return ;
-		}
+		if(!mSwipEnable){ return ; }
+
 		if (Math.signum(dis) != mSwipeDirection) {
 			dis = 0;
 		} else if (Math.abs(dis) > mMenuView.getWidth()) {
 			dis = mMenuView.getWidth()*mSwipeDirection;
 		}
 
-		mContentView.layout(-dis, mContentView.getTop(),
-				mContentView.getWidth() -dis, getMeasuredHeight());
+		mContentView.layout(-dis, mContentView.getTop(),mContentView.getWidth() -dis, getMeasuredHeight());
 
 		if (mSwipeDirection == SwipeMenuListView.DIRECTION_LEFT) {
-
-			mMenuView.layout(mContentView.getWidth() - dis, mMenuView.getTop(),
-					mContentView.getWidth() + mMenuView.getWidth() - dis,
-					mMenuView.getBottom());
+			mMenuView.layout(mContentView.getWidth() - dis, mMenuView.getTop(),    mContentView.getWidth() + mMenuView.getWidth() - dis, mMenuView.getBottom());
 		} else {
-			mMenuView.layout(-mMenuView.getWidth() - dis, mMenuView.getTop(),
-					- dis, mMenuView.getBottom());
+			mMenuView.layout(-mMenuView.getWidth()   - dis, mMenuView.getTop(), -dis, mMenuView.getBottom());
 		}
 	}
 
@@ -319,12 +313,9 @@ public class SwipeMenuLayout extends FrameLayout {
 		mContentView.layout(0, 0, getMeasuredWidth(),
 				mContentView.getMeasuredHeight());
 		if (mSwipeDirection == SwipeMenuListView.DIRECTION_LEFT) {
-			mMenuView.layout(getMeasuredWidth(), 0,
-					getMeasuredWidth() + mMenuView.getMeasuredWidth(),
-					mContentView.getMeasuredHeight());
+			mMenuView.layout(getMeasuredWidth(), 0, getMeasuredWidth() + mMenuView.getMeasuredWidth(), mContentView.getMeasuredHeight());
 		} else {
-			mMenuView.layout(-mMenuView.getMeasuredWidth(), 0,
-					0, mContentView.getMeasuredHeight());
+			mMenuView.layout(-mMenuView.getMeasuredWidth(), 0, 0, mContentView.getMeasuredHeight());
 		}
 	}
 

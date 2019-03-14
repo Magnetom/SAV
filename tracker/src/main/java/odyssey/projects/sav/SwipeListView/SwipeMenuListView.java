@@ -1,7 +1,6 @@
 package odyssey.projects.sav.SwipeListView;
 
 import android.content.Context;
-import android.support.v4.view.MotionEventCompat;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.MotionEvent;
@@ -20,7 +19,7 @@ public class SwipeMenuListView extends ListView {
     private static final int TOUCH_STATE_X = 1;
     private static final int TOUCH_STATE_Y = 2;
 
-    public static final int DIRECTION_LEFT = 1;
+    public static final int DIRECTION_LEFT  =  1;
     public static final int DIRECTION_RIGHT = -1;
     private int mDirection = 1;//swipe from right to left by default
 
@@ -300,17 +299,17 @@ public class SwipeMenuListView extends ListView {
         mOnMenuStateChangeListener = onMenuStateChangeListener;
     }
 
-    public static interface OnMenuItemClickListener {
+    public interface OnMenuItemClickListener {
         boolean onMenuItemClick(int position, SwipeMenu menu, int index);
     }
 
-    public static interface OnSwipeListener {
+    public interface OnSwipeListener {
         void onSwipeStart(int position);
 
         void onSwipeEnd(int position);
     }
 
-    public static interface OnMenuStateChangeListener {
+    public interface OnMenuStateChangeListener {
         void onMenuOpen(int position);
 
         void onMenuClose(int position);
@@ -332,9 +331,6 @@ public class SwipeMenuListView extends ListView {
         view.getLocationOnScreen(location);
         int x = location[0];
         int y = location[1];
-        if (ev.getRawX() < x || ev.getRawX() > (x + view.getWidth()) || ev.getRawY() < y || ev.getRawY() > (y + view.getHeight())) {
-            return false;
-        }
-        return true;
+        return !(ev.getRawX() < x) && !(ev.getRawX() > (x + view.getWidth())) && !(ev.getRawY() < y) && !(ev.getRawY() > (y + view.getHeight()));
     }
 }

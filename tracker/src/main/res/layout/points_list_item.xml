@@ -1,10 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:minHeight="70dp"
     android:background="@color/colorWhite">
+
+    <TextView
+        android:id="@+id/itemSequenceView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="21dp"
+        android:fontFamily="sans-serif"
+        android:text="1"
+        android:textColor="@color/colorTextNormal"
+        android:textSize="12sp"
+        app:layout_constraintBottom_toBottomOf="@+id/imageView4"
+        app:layout_constraintEnd_toEndOf="@+id/imageView4"
+        app:layout_constraintStart_toStartOf="@+id/imageView4"
+        tools:text="1" />
 
     <ImageView
         android:id="@+id/imageView4"
@@ -93,11 +108,13 @@
             android:background="@drawable/list_divider"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/textView9"
+            android:visibility="invisible"
             app:layout_constraintTop_toTopOf="parent"></android.support.constraint.ConstraintLayout>
 
     </android.support.constraint.ConstraintLayout>
 
     <android.support.constraint.ConstraintLayout
+        android:id="@+id/constraintLayout5"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginStart="8dp"

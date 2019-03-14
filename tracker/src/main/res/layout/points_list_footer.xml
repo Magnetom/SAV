@@ -14,6 +14,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="22dp"
+        android:fontFamily="sans-serif-thin"
         android:text="Сместите интересующий элемент списка влево для доступа к дополнительным опциям."
         android:textColor="@color/colorTextMedium"
         android:textSize="14sp"

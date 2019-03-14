@@ -42,6 +42,7 @@ public class PointsView extends DbProc {
         String[] from = new String[] {
                 Db.TABLE_POINTS_COLUMNS.COLUMN_ID,
                 Db.TABLE_POINTS_COLUMNS.COLUMN_TRACK_ID,
+                Db.TABLE_POINTS_COLUMNS.COLUMN_SEQUENCE,
                 Db.TABLE_POINTS_COLUMNS.COLUMN_POINT,
                 Db.TABLE_POINTS_COLUMNS.COLUMN_GPS_LATITUDE,
                 Db.TABLE_POINTS_COLUMNS.COLUMN_GPS_LONGITUDE,
@@ -52,11 +53,12 @@ public class PointsView extends DbProc {
         int[] to = new int[] {
                 0,                      // [00] COLUMN_ID
                 0,                      // [01] COLUMN_TRACK_ID
-                R.id.pointNameView,     // [02] COLUMN_POINT
-                R.id.itemLatitudeView,  // [03] COLUMN_GPS_LATITUDE
-                R.id.itemLongitudeView, // [03] COLUMN_GPS_LONGITUDE
-                R.id.toleranceView,     // [04] COLUMN_GPS_TOLERANCE
-                0                       // [05] COLUMN_ACTIVE
+                R.id.itemSequenceView,  // [02] COLUMN_SEQUENCE
+                R.id.pointNameView,     // [03] COLUMN_POINT
+                R.id.itemLatitudeView,  // [04] COLUMN_GPS_LATITUDE
+                R.id.itemLongitudeView, // [05] COLUMN_GPS_LONGITUDE
+                R.id.toleranceView,     // [06] COLUMN_GPS_TOLERANCE
+                0                       // [07] COLUMN_ACTIVE
         };
 
         // создаем адаптер и настраиваем список
@@ -185,7 +187,7 @@ public class PointsView extends DbProc {
                         new AlertDialog.Builder(context,R.style.AlertDialogTheme)
                                 .setView(view)
                                 .setIcon(R.drawable.alert_rename)
-                                .setTitle("Редактирование точки")
+                                .setTitle("Редактирование точки №"+point.sequence)
                                 //.setMessage("Введите имя для новой точки маршрута.")
                                 .setNegativeButton("Отмена", new DialogInterface.OnClickListener() {
                                     @Override
@@ -269,7 +271,7 @@ public class PointsView extends DbProc {
     }
 
     @Override
-    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
+    public void onLoadFinished(@NonNull Loader<Cursor> loader, Cursor data) {
         this.adapter.swapCursor(data);
     }
 

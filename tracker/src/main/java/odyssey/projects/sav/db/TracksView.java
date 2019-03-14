@@ -23,6 +23,7 @@ import odyssey.projects.sav.SwipeListView.SwipeMenuCreator;
 import odyssey.projects.sav.SwipeListView.SwipeMenuItem;
 import odyssey.projects.sav.SwipeListView.SwipeMenuListView;
 import odyssey.projects.sav.adapters.TrackAdapter;
+import odyssey.projects.sav.remote.UploadManager;
 import odyssey.projects.sav.tracker.PointsActivity;
 import odyssey.projects.sav.tracker.R;
 
@@ -95,22 +96,30 @@ public class TracksView extends DbProc {
         SwipeMenuCreator creator = new SwipeMenuCreator() {
             @Override
             public void create(SwipeMenu menu) {
-                // create "open" item
-                SwipeMenuItem openItem = new SwipeMenuItem(context);
+
+                // create "upload" item
+                SwipeMenuItem uploadItem = new SwipeMenuItem(context);
+                uploadItem.setBackground(context.getDrawable(R.color.colorSwipeMenuItemUpload));
+                uploadItem.setWidth(dp2px(context,90));
+                uploadItem.setIcon(R.drawable.ic_upload, dp2px(context,32), dp2px(context,32));
+                menu.addMenuItem(uploadItem);
+
+                // create "edit" item
+                SwipeMenuItem editItem = new SwipeMenuItem(context);
                 // set item background
-                //openItem.setBackground(new ColorDrawable(Color.rgb(0xC9, 0xC9,0xCE)));
-                openItem.setBackground(context.getDrawable(R.color.colorSwipeMenuItemEdit));
+                //editItem.setBackground(new ColorDrawable(Color.rgb(0xC9, 0xC9,0xCE)));
+                editItem.setBackground(context.getDrawable(R.color.colorSwipeMenuItemEdit));
                 // set item width
-                openItem.setWidth(dp2px(context,90));
+                editItem.setWidth(dp2px(context,70));
                 // set item title
-                //openItem.setTitle("Изменить");
+                //editItem.setTitle("Изменить");
                 // set item title font size
-                //openItem.setTitleSize(18);
+                //editItem.setTitleSize(18);
                 // set item title font color
-                //openItem.setTitleColor(Color.WHITE);
-                openItem.setIcon(R.drawable.ic_edit, dp2px(context,32), dp2px(context,32));
+                //editItem.setTitleColor(Color.WHITE);
+                editItem.setIcon(R.drawable.ic_edit, dp2px(context,32), dp2px(context,32));
                 // add to menu
-                menu.addMenuItem(openItem);
+                menu.addMenuItem(editItem);
 
                 // create "delete" item
                 SwipeMenuItem deleteItem = new SwipeMenuItem(context);
@@ -127,9 +136,8 @@ public class TracksView extends DbProc {
             }
         };
 
-        // Right
+        listView.setSwipeDirection(SwipeMenuListView.DIRECTION_LEFT);
         listView.setSwipeDirection(SwipeMenuListView.DIRECTION_RIGHT);
-        //listView.setSwipeDirection(SwipeMenuListView.DIRECTION_LEFT);
 
         // set creator
         listView.setMenuCreator(creator);
@@ -176,6 +184,13 @@ public class TracksView extends DbProc {
                 switch (index) {
                     case 0:
                         ///////////////////////////////////
+                        // Выгрузка маршрута на сервер.  //
+                        ///////////////////////////////////
+                        Track track = getTrack(Long.valueOf(track_id));
+                        UploadManager.doUpload(context, track);
+                        break;
+                    case 1:
+                        ///////////////////////////////////
                         // Редактирование имени маршрута //
                         ///////////////////////////////////
                         View view = ((AppCompatActivity) context).getLayoutInflater().inflate(R.layout.rename_track_dialog, null);
@@ -208,7 +223,7 @@ public class TracksView extends DbProc {
                                 .create()
                                 .show();
                         break;
-                    case 1:
+                    case 2:
                         /////////////////////////////////
                         // Удаление текущего маршрута. //
                         /////////////////////////////////
@@ -269,7 +284,7 @@ public class TracksView extends DbProc {
     }
 
     @Override
-    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
+    public void onLoadFinished(@NonNull Loader<Cursor> loader, Cursor data) {
         this.adapter.swapCursor(data);
     }
 

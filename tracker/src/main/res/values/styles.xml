@@ -1,0 +1,61 @@
+<resources>
+
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat.NoActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryTop</item>
+        <item name="colorAccent">@color/colorAccent</item>
+
+        <item name="android:textColorSecondary">@color/colorTextDarkMedium</item>
+        <item name="android:textColorPrimary">@color/colorTextDarkMedium</item>
+
+        <item name="alertDialogStyle">@style/AlertDialogTheme</item>
+    </style>
+
+    <style name="MyToolbarStyle" parent="ThemeOverlay.AppCompat.Light">
+        <item name="android:colorBackground">@color/colorWhite</item>
+        <item name="android:textColor">@color/colorTextDark2</item>
+    </style>
+
+    <style name="PreferencesTheme" parent="Theme.AppCompat.Light">
+        <item name="android:windowActionBar">true</item>
+        <item name="android:windowNoTitle">false</item>
+
+        <item name="android:background">@color/colorWhite</item>
+        <item name="android:colorAccent">@color/colorAccent2</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryTop</item>
+
+
+        <item name="android:textColorPrimary">@color/colorTextDark</item>
+        <item name="android:textColorSecondary">@color/colorTextMedium</item>
+        <!--
+            <item name="android:editTextPreferenceStyle">@style/AlertDialogTheme</item>
+        -->
+        <!--
+            <item name="android:editTextStyle">@style/AlertDialogTheme</item>
+         -->
+
+    </style>
+
+
+    <style name="AlertDialogTheme" parent="Theme.AppCompat.Light.Dialog.Alert">
+        <item name="colorPrimaryDark">@color/colorPrimaryTop</item>
+        <item name="android:textColorPrimary">@color/colorTextDark</item>
+        <item name="android:textColorSecondary">@color/colorTextMedium</item>
+        <item name="android:colorBackground">@color/colorWhite</item>
+
+    </style>
+
+    <!--Floating label text style-->
+    <style name="MyHintText" parent="TextAppearance.AppCompat.Small">
+        <item name="android:textColor">@color/colorAccent2</item>
+    </style>
+
+    <!--Input field style-->
+    <style name="MyEditText" parent="Theme.AppCompat.Light">
+        <item name="colorControlNormal">@color/colorTextNormal</item>
+        <item name="colorControlActivated">@color/colorAccent2</item>
+    </style>
+
+</resources>

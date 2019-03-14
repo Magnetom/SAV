@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory android:title="Общие настройки">
+        <EditTextPreference
+            android:key="server_address"
+            android:singleLine="true"
+            android:inputType="numberDecimal"
+            android:defaultValue="192.168.1.5"
+            android:maxLength="15"
+            android:dialogTitle="Введите адрес.\nНапример: 192.168.1.1"
+            android:title="Адрес сервера"
+            android:summary="Укажите адрес сервера, на который будут выгружаться маршруты."/>
+    </PreferenceCategory>
+
+</PreferenceScreen>
