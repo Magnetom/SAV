@@ -1,4 +1,4 @@
-package odyssey.projects.sav.tracker;
+package odyssey.projects.sav.activity;
 
 import android.content.Context;
 import android.content.DialogInterface;
@@ -14,20 +14,20 @@ import android.widget.TextView;
 
 import java.util.Objects;
 
-import odyssey.projects.sav.db.TracksView;
+import odyssey.projects.sav.db.TracksListView;
 
 
 public class TracksActivity extends AppCompatActivity {
 
-    private TracksView tracksView;
+    private TracksListView tracksListView;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         //setContentView(R.layout.activity_tracks);
         setContentView(R.layout.activity_tracks_new);
-        //Основная инициализация.
+        // Основная инициализация.
         mainInit();
-        // Настройка туулбара.
+        // Настройка тулбара.
         setupToolbar();
     }
 
@@ -40,7 +40,7 @@ public class TracksActivity extends AppCompatActivity {
 
     // Основная инициализация.
     private void mainInit(){
-        tracksView = new TracksView(this);
+        tracksListView = new TracksListView(this);
         // Инициализируем слушателей
         initListeners();
     }
@@ -77,7 +77,7 @@ public class TracksActivity extends AppCompatActivity {
                                 TextView trackName = view.findViewById(R.id.newTrackNameText);
                                 if (trackName!=null) {
                                     if (!trackName.getText().toString().equals("")){
-                                        tracksView.addTrack(trackName.getText().toString());
+                                        tracksListView.addTrack(trackName.getText().toString());
                                         dialog.cancel();
                                     }
                                 }
@@ -92,7 +92,7 @@ public class TracksActivity extends AppCompatActivity {
     @Override
     protected void onPostResume() {
         super.onPostResume();
-        if (tracksView != null) tracksView.doUpdate();
+        if (tracksListView != null) tracksListView.doUpdate();
     }
 
     @Override
@@ -103,6 +103,7 @@ public class TracksActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+
         // Получим идентификатор выбранного пункта меню.
         int id = item.getItemId();
 

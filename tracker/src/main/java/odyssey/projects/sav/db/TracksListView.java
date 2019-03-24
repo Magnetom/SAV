@@ -22,21 +22,21 @@ import odyssey.projects.sav.SwipeListView.SwipeMenu;
 import odyssey.projects.sav.SwipeListView.SwipeMenuCreator;
 import odyssey.projects.sav.SwipeListView.SwipeMenuItem;
 import odyssey.projects.sav.SwipeListView.SwipeMenuListView;
+import odyssey.projects.sav.activity.PointsActivity;
+import odyssey.projects.sav.activity.R;
 import odyssey.projects.sav.adapters.TrackAdapter;
 import odyssey.projects.sav.remote.UploadManager;
-import odyssey.projects.sav.tracker.PointsActivity;
-import odyssey.projects.sav.tracker.R;
 
 import static odyssey.projects.sav.utils.Helper.dp2px;
 
 
-public class TracksView extends DbProc {
+public class TracksListView extends DbProc {
 
     private final String TAG = "TRACKS_VIEW";
 
     private TrackAdapter adapter;
 
-    public TracksView(Context context) {super(context);}
+    public TracksListView(Context context) {super(context);}
 
     @Override
     SimpleCursorAdapter getAdapter() {return adapter;}
@@ -186,7 +186,7 @@ public class TracksView extends DbProc {
                         ///////////////////////////////////
                         // Выгрузка маршрута на сервер.  //
                         ///////////////////////////////////
-                        Track track = getTrack(Long.valueOf(track_id));
+                        TrackItem track = getTrack(Long.valueOf(track_id));
                         UploadManager.doUpload(context, track);
                         break;
                     case 1:

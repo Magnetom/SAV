@@ -3,13 +3,13 @@ package odyssey.projects.sav.db;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Track {
+public class TrackItem {
 
-    public Track() { points_list = new ArrayList<>(); }
+    public TrackItem() { points_list = new ArrayList<>(); }
 
     Long    id;
     String  name;
-    List<LocationPoint> points_list;
+    List<LocationPointItem> points_list;
 
     public Long getId() {
         return id;
@@ -27,7 +27,7 @@ public class Track {
         this.name = name;
     }
 
-    public List<LocationPoint> getPoints_list() {
+    public List<LocationPointItem> getPoints_list() {
         return points_list;
     }
 }

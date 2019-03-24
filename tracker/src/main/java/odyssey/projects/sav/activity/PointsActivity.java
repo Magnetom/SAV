@@ -1,4 +1,4 @@
-package odyssey.projects.sav.tracker;
+package odyssey.projects.sav.activity;
 
 import android.Manifest;
 import android.content.Context;
@@ -16,11 +16,11 @@ import android.widget.Toast;
 
 import java.text.DecimalFormat;
 
-import odyssey.projects.sav.db.PointsView;
+import odyssey.projects.sav.db.PointsListView;
 
 public class PointsActivity extends AppCompatActivity {
 
-    private PointsView pointsView;
+    private PointsListView pointsListView;
     private LocationListener locationListener;
 
     @Override
@@ -44,11 +44,11 @@ public class PointsActivity extends AppCompatActivity {
         if (track == -1) return;
 
         // Инициализация основного виджета.
-        pointsView = new PointsView(this, track);
+        pointsListView = new PointsListView(this, track);
 
         // Инициализация заголовка активити: название просматриваемого/редактируемого маршрута.
         TextView currTrack = findViewById(R.id.currentTrackNameView);
-        currTrack.setText(pointsView.getTrackName(track));
+        currTrack.setText(pointsListView.getTrackName(track));
 
         // Инициализируем слушателей
         initListeners();
@@ -123,6 +123,7 @@ public class PointsActivity extends AppCompatActivity {
         final TextView latitudeView  = findViewById(R.id.latitudeView);
         final TextView longitudeView = findViewById(R.id.longitudeView);
 
+        if (latitudeView != null && longitudeView != null)
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -145,6 +146,7 @@ public class PointsActivity extends AppCompatActivity {
         final TextView latitudeView  = findViewById(R.id.latitudeView);
         final TextView longitudeView = findViewById(R.id.longitudeView);
 
+        if (latitudeView != null && longitudeView != null)
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -199,7 +201,7 @@ public class PointsActivity extends AppCompatActivity {
 
                                 if (pointName.getText().toString().equals("")) pointName.setText("новая точка");
 
-                                pointsView.addPoint(pointsView.getTrack(),
+                                pointsListView.addPoint(pointsListView.getTrack(),
                                         pointName.getText().toString(),
                                         pointLatitude.getText().toString(),
                                         pointLongitude.getText().toString(),

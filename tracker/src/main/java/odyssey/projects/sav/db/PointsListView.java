@@ -18,20 +18,20 @@ import odyssey.projects.sav.SwipeListView.SwipeMenu;
 import odyssey.projects.sav.SwipeListView.SwipeMenuCreator;
 import odyssey.projects.sav.SwipeListView.SwipeMenuItem;
 import odyssey.projects.sav.SwipeListView.SwipeMenuListView;
+import odyssey.projects.sav.activity.R;
 import odyssey.projects.sav.adapters.PointsAdapter;
-import odyssey.projects.sav.tracker.R;
 
 import static odyssey.projects.sav.utils.Helper.dp2px;
 
-public class PointsView extends DbProc {
+public class PointsListView extends DbProc {
 
-    private final String TAG = "POINTS_VIEW";
+    private final String TAG = "POINTS_LIST_VIEW";
 
     private PointsAdapter adapter;
 
     private static long track = -1;
 
-    public PointsView(Context context, long track) { super(context); setTrack(track);}
+    public PointsListView(Context context, long track) { super(context); setTrack(track);}
 
     @Override
     SimpleCursorAdapter getAdapter() { return adapter; }
@@ -82,7 +82,6 @@ public class PointsView extends DbProc {
         listView.setDividerHeight(1);
         listView.setFooterDividersEnabled(false);
         listView.setHeaderDividersEnabled(false);
-
 
         // Устанавливаем шапку списка.
         View list_header = LayoutInflater.from(this.context).inflate(R.layout.points_list_header, null);
@@ -161,7 +160,7 @@ public class PointsView extends DbProc {
                 Cursor cursor = (Cursor) listView.getAdapter().getItem(position+ listView.getHeaderViewsCount());
                 if (cursor != null) cursor.moveToPosition(position);
 
-                final LocationPoint point = getPoint(cursor);
+                final LocationPointItem point = getPoint(cursor);
 
                 if (point == null) return false;
 
@@ -203,7 +202,7 @@ public class PointsView extends DbProc {
                                         if (pointLongitude.getText().toString().equals(""))  pointLongitude.setText("0.000000");
                                         if (pointTolerance.getText().toString().equals(""))  pointTolerance.setText("50");
 
-                                        LocationPoint newPoint = new LocationPoint();
+                                        LocationPointItem newPoint = new LocationPointItem();
 
                                         newPoint.id         = point.id;
                                         newPoint.track_id   = point.track_id;
@@ -277,7 +276,7 @@ public class PointsView extends DbProc {
 
     @Override
     CursorLoader initCursorLoader() {
-        return new PointsView.MyCursorLoader(this.context, this.db);
+        return new PointsListView.MyCursorLoader(this.context, this.db);
     }
 
     @Override

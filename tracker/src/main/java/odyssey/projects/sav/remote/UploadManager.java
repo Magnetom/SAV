@@ -5,7 +5,7 @@ import android.content.Context;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import odyssey.projects.sav.db.Track;
+import odyssey.projects.sav.db.TrackItem;
 import odyssey.projects.sav.debug.DebugOut;
 
 public class UploadManager {
@@ -22,7 +22,7 @@ public class UploadManager {
     private static final String SRV_STATUS_UNKNOWN   = "unknown";
     private static final String SRV_STATUS_ERROR     = "error";
 
-    public static void doUpload(final Context context, final Track track){
+    public static void doUpload(final Context context, final TrackItem track){
 
         VolleyWrapper.doUpload(context, null, null, track, new LongOpCallback() {
 

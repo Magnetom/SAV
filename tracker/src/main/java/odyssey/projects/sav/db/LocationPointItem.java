@@ -1,6 +1,6 @@
 package odyssey.projects.sav.db;
 
-public class LocationPoint {
+public class LocationPointItem {
     Long    id;
     Long    track_id;
     Long    sequence;

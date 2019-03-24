@@ -20,8 +20,8 @@ import java.util.List;
 import java.util.Map;
 
 import odyssey.projects.sav.Settings;
-import odyssey.projects.sav.db.LocationPoint;
-import odyssey.projects.sav.db.Track;
+import odyssey.projects.sav.db.LocationPointItem;
+import odyssey.projects.sav.db.TrackItem;
 
 import static odyssey.projects.sav.utils.UidUtils.getStrUid;
 
@@ -35,7 +35,7 @@ public class VolleyWrapper {
     public static void doUpload(final Context context,
                                 final RequestQueue requestQueue,
                                 JSONObject jsonRequest,
-                                final Track track,
+                                final TrackItem track,
                                 final LongOpCallback callback){
 
         if (jsonRequest == null) jsonRequest = new JSONObject();
@@ -56,9 +56,9 @@ public class VolleyWrapper {
             // Перебираем все путевые точки маршрута, если они есть.
             if (track.getPoints_list() != null && !track.getPoints_list().isEmpty()){
 
-                List<LocationPoint> points = track.getPoints_list();
+                List<LocationPointItem> points = track.getPoints_list();
 
-                for (LocationPoint point: points) {
+                for (LocationPointItem point: points) {
 
 
                     JSONObject jsonPoint = new JSONObject();
