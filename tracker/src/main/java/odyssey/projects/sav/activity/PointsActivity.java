@@ -7,6 +7,7 @@ import android.content.pm.PackageManager;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.support.constraint.ConstraintLayout;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -16,12 +17,19 @@ import android.widget.Toast;
 
 import java.text.DecimalFormat;
 
+import odyssey.projects.sav.db.OnModeChangedCallback;
 import odyssey.projects.sav.db.PointsListView;
+import odyssey.projects.sav.db.PointsListViewX;
 
 public class PointsActivity extends AppCompatActivity {
 
     private PointsListView pointsListView;
+    private PointsListViewX pointsListViewX;
     private LocationListener locationListener;
+
+    private ConstraintLayout actionBarLayout;
+    private View mainModeView;
+    private View editModeView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,8 +43,36 @@ public class PointsActivity extends AppCompatActivity {
         if (b != null) {
             track = b.getLong("track");
         }
+
+        layoutInit();
         //Основная инициализация.
         mainInit(track);
+    }
+
+    private void layoutInit() {
+
+        actionBarLayout = findViewById(R.id.actionBarLayout);
+
+        if (actionBarLayout != null){
+
+            mainModeView = getLayoutInflater().inflate(R.layout.activity_points_header_main,      actionBarLayout, false);
+            editModeView = getLayoutInflater().inflate(R.layout.activity_points_header_item_edit, actionBarLayout, false);
+
+            setMainMode();
+        }
+    }
+
+    private void setMainMode(){
+        if (actionBarLayout != null) {
+            actionBarLayout.removeAllViews();
+            if (mainModeView != null) actionBarLayout.addView(mainModeView);
+        }
+    }
+    private void setItemEditMode(){
+        if (actionBarLayout != null) {
+            actionBarLayout.removeAllViews();
+            if (editModeView != null) actionBarLayout.addView(editModeView);
+        }
     }
 
     // Основная инициализация.
@@ -44,11 +80,13 @@ public class PointsActivity extends AppCompatActivity {
         if (track == -1) return;
 
         // Инициализация основного виджета.
-        pointsListView = new PointsListView(this, track);
+        //pointsListView = new PointsListView(this, track);
+        pointsListViewX = new PointsListViewX(this, track);
 
         // Инициализация заголовка активити: название просматриваемого/редактируемого маршрута.
         TextView currTrack = findViewById(R.id.currentTrackNameView);
-        currTrack.setText(pointsListView.getTrackName(track));
+        //if (currTrack != null && pointsListView != null) currTrack.setText(pointsListView.getTrackName(track));
+        //if (currTrack != null) currTrack.setText(pointsListViewX.getTrackName(track));
 
         // Инициализируем слушателей
         initListeners();
@@ -201,16 +239,27 @@ public class PointsActivity extends AppCompatActivity {
 
                                 if (pointName.getText().toString().equals("")) pointName.setText("новая точка");
 
+                                if (pointsListView != null)
                                 pointsListView.addPoint(pointsListView.getTrack(),
                                         pointName.getText().toString(),
                                         pointLatitude.getText().toString(),
                                         pointLongitude.getText().toString(),
                                         pointTolerance.getText().toString());
-                                dialog.cancel();
                             }
                         })
                         .create()
                         .show();
+            }
+        });
+
+        // Регистрация слушателя - изменение режима просмотра списка точек (просмотр/редактирование).
+        if (pointsListView != null)
+        pointsListView.setOnModeChangedCallback(new OnModeChangedCallback() {
+            @Override
+            public void editMode(boolean mode) {
+                if (mode) setItemEditMode();
+                else
+                    setMainMode();
             }
         });
     }

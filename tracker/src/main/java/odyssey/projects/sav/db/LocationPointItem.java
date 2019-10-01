@@ -9,6 +9,7 @@ public class LocationPointItem {
     String  longitude;
     Integer tolerance;
     Boolean active;
+    Boolean selected;
 
     public Long getId() {
         return id;
@@ -72,5 +73,13 @@ public class LocationPointItem {
 
     public void setSequence(Long sequence) {
         this.sequence = sequence;
+    }
+
+    public Boolean isSelected() {
+        return selected;
+    }
+
+    public void setSelected(Boolean selected) {
+        this.selected = selected;
     }
 }

@@ -15,5 +15,21 @@ public class PointsAdapter extends SimpleCursorAdapter {
     @Override
     public void bindView(View view, Context context, Cursor cursor) {
         super.bindView(view,context,cursor);
+
+        /*
+        if (view != null) {
+
+            TextView itemLongitudeView = view.findViewById(R.id.itemLongitudeView);
+
+            if (isPointSelected(cursor)) {
+                //view.setBackgroundColor(view.getResources().getColor(R.color.colorSwipeMenuEditMode));
+                //view.setBackgroundColor(Color.BLUE);
+                itemLongitudeView.setBackgroundColor(Color.BLUE);
+            } else {
+                //view.setBackgroundColor(view.getResources().getColor(R.color.colorWhite));
+                itemLongitudeView.setBackgroundColor(Color.WHITE);
+            }
+        }
+        */
     }
 }

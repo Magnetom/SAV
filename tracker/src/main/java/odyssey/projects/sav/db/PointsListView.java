@@ -1,27 +1,20 @@
 package odyssey.projects.sav.db;
 
 import android.content.Context;
-import android.content.DialogInterface;
 import android.database.Cursor;
 import android.support.annotation.NonNull;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
-import android.widget.TextView;
 
-import odyssey.projects.sav.SwipeListView.SwipeMenu;
-import odyssey.projects.sav.SwipeListView.SwipeMenuCreator;
-import odyssey.projects.sav.SwipeListView.SwipeMenuItem;
-import odyssey.projects.sav.SwipeListView.SwipeMenuListView;
 import odyssey.projects.sav.activity.R;
 import odyssey.projects.sav.adapters.PointsAdapter;
-
-import static odyssey.projects.sav.utils.Helper.dp2px;
 
 public class PointsListView extends DbProc {
 
@@ -30,6 +23,11 @@ public class PointsListView extends DbProc {
     private PointsAdapter adapter;
 
     private static long track = -1;
+
+    private OnModeChangedCallback modeCallback;
+
+    private boolean editMode = false;
+    private int selectedItemsCount = 0;
 
     public PointsListView(Context context, long track) { super(context); setTrack(track);}
 
@@ -47,7 +45,8 @@ public class PointsListView extends DbProc {
                 Db.TABLE_POINTS_COLUMNS.COLUMN_GPS_LATITUDE,
                 Db.TABLE_POINTS_COLUMNS.COLUMN_GPS_LONGITUDE,
                 Db.TABLE_POINTS_COLUMNS.COLUMN_GPS_TOLERANCE,
-                Db.TABLE_POINTS_COLUMNS.COLUMN_ACTIVE
+                Db.TABLE_POINTS_COLUMNS.COLUMN_ACTIVE,
+                Db.TABLE_POINTS_COLUMNS.COLUMN_SELECTED
         };
 
         int[] to = new int[] {
@@ -58,7 +57,8 @@ public class PointsListView extends DbProc {
                 R.id.itemLatitudeView,  // [04] COLUMN_GPS_LATITUDE
                 R.id.itemLongitudeView, // [05] COLUMN_GPS_LONGITUDE
                 R.id.toleranceView,     // [06] COLUMN_GPS_TOLERANCE
-                0                       // [07] COLUMN_ACTIVE
+                0,                      // [07] COLUMN_ACTIVE
+                0                       // [08] COLUMN_SELECTED
         };
 
         // создаем адаптер и настраиваем список
@@ -68,12 +68,13 @@ public class PointsListView extends DbProc {
     @Override
     void setupListView() {
 
-        final SwipeMenuListView listView = (((AppCompatActivity) context).findViewById(R.id.pointsListView));
+        //final SwipeMenuListView listView = (((AppCompatActivity) context).findViewById(R.id.pointsListView));
+        final ListView listView = (((AppCompatActivity) context).findViewById(R.id.pointsListView));
         if (listView == null) return;
 
         // Настраиваем view для случая пустого списка.
         ViewGroup parentGroup = (ViewGroup) listView.getParent();
-        View emptyListView = ((AppCompatActivity) context).getLayoutInflater().inflate(R.layout.empty_list_layout, parentGroup, false);
+        final View emptyListView = ((AppCompatActivity) context).getLayoutInflater().inflate(R.layout.empty_list_layout, parentGroup, false);
         parentGroup.addView(emptyListView);
         listView.setEmptyView(emptyListView);
 
@@ -84,8 +85,8 @@ public class PointsListView extends DbProc {
         listView.setHeaderDividersEnabled(false);
 
         // Устанавливаем шапку списка.
-        View list_header = LayoutInflater.from(this.context).inflate(R.layout.points_list_header, null);
-        listView.addHeaderView(list_header);
+        //View list_header = LayoutInflater.from(this.context).inflate(R.layout.points_list_header, null);
+        //listView.addHeaderView(list_header);
 
         // Устанавливаем подвал списка
         View list_footer = LayoutInflater.from(this.context).inflate(R.layout.points_list_footer, null);
@@ -95,8 +96,9 @@ public class PointsListView extends DbProc {
         listView.setLongClickable(true);
 
         // Регистрируем ListView для контекстного меню.
-        //((AppCompatActivity) context).unregisterForContextMenu(listView);
+        ((AppCompatActivity) context).unregisterForContextMenu(listView);
 
+        /*
         // Swipe Menu Creator
         SwipeMenuCreator creator = new SwipeMenuCreator() {
             @Override
@@ -139,20 +141,9 @@ public class PointsListView extends DbProc {
 
         // set creator
         listView.setMenuCreator(creator);
+        */
 
-        listView.setOnSwipeListener(new SwipeMenuListView.OnSwipeListener() {
-
-            @Override
-            public void onSwipeStart(int position) {
-                // swipe start
-            }
-
-            @Override
-            public void onSwipeEnd(int position) {
-                // swipe end
-            }
-        });
-
+        /*
         listView.setOnMenuItemClickListener(new SwipeMenuListView.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(int position, SwipeMenu menu, int index) {
@@ -253,9 +244,11 @@ public class PointsListView extends DbProc {
                                 .show();
                         break;
                 }
-                return false;
+                //return false;
+                return true;
             }
         });
+        */
 
 //        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
 //            @Override
@@ -265,9 +258,96 @@ public class PointsListView extends DbProc {
 //            }
 //        });
 
+        //listView.setChoiceMode(AbsListView.CHOICE_MODE_SINGLE);
+        //listView.setChoiceMode(AbsListView.CHOICE_MODE_MULTIPLE);
+        //listView.setSelector(android.R.color.holo_blue_light);
+        //listView.requestFocusFromTouch();
+        //listView.setSelection(2);
+
+        listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+
+                /*
+                Cursor cursor = (Cursor) listView.getAdapter().getItem(position+ listView.getHeaderViewsCount());
+                if (cursor != null) cursor.moveToPosition(position);
+
+                final LocationPointItem point = getPoint(cursor);
+
+                if (point == null) return false;
+
+                boolean isSelected = !point.isSelected();
+                */
+
+                //boolean isSelected = !view.isSelected();
+                //view.setSelected(isSelected);
+                //view.setSelected(true);
+
+
+                /*
+                if (isSelected) selectedItemsCount++;
+                else
+                    if (selectedItemsCount>0) selectedItemsCount--;
+
+                if ( ((selectedItemsCount == 0) && (editMode)) || ((selectedItemsCount>0) && (!editMode)) ){
+                    // Уведомить верхний уровень об изменении режима (редактирование/основной режим).
+                    if (modeCallback != null) {
+                        modeCallback.editMode(editMode = !editMode);
+                    }
+                }
+                */
+
+                /*
+                boolean isselected = view.isSelected();
+
+                view = view.findViewById(R.id.itemLongitudeView);
+
+                if (view != null) {
+                    if (isSelected) {
+                        //view.setBackgroundColor(view.getResources().getColor(R.color.colorSwipeMenuEditMode));
+                        view.setBackgroundColor(Color.BLUE);
+                    } else {
+                        //view.setBackgroundColor(view.getResources().getColor(R.color.colorWhite));
+                        view.setBackgroundColor(Color.WHITE);
+                    }
+                }
+                */
+
+                //togglePointSelection(id);
+
+                //selectPoint(id, isSelected);
+
+                editMode = true;
+
+                listView.setItemChecked(position, true);
+
+                //doUpdate();
+
+                // Return true if the callback consumed the long click, false otherwise
+                //return false;
+                return true;
+            }
+        });
+
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position,long arg3) {
+
+                // Определяем признак конца режима редактирования: нет выделенных элементов.
+                if (listView.getCheckedItemCount() < 1) editMode = false;
+
+                // Длительным нажатием на элемент списка - выделяем его, а коротким - снимаем выделение.
+                if (!editMode) {
+                    //listView.setItemChecked(position, false);
+                    view.setSelected(false);
+                }
+            }
+        });
+
         // Присваиваем адаптер для виджета ListView
         listView.setAdapter(adapter);
     }
+
 
     @Override
     public void onLoadFinished(@NonNull Loader<Cursor> loader, Cursor data) {
@@ -282,11 +362,13 @@ public class PointsListView extends DbProc {
     @Override
     void OnDestroy() { }
 
-    private static class MyCursorLoader extends CursorLoader {
+    static class MyCursorLoader extends CursorLoader {
         Db db;
         MyCursorLoader(@NonNull Context context, Db db) {
             super(context);
             this.db = db;
+            // Снимаем выделения со всех элементов списка, если таковые были.
+            db.clearAllPointsSelection();
         }
         @Override
         public Cursor loadInBackground() {
@@ -299,5 +381,9 @@ public class PointsListView extends DbProc {
 
     public String getTrackName(Long track_id){
         return db.getTrackName(track_id);
+    }
+
+    public void setOnModeChangedCallback(OnModeChangedCallback callback){
+        modeCallback = callback;
     }
 }

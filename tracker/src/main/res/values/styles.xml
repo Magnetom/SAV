@@ -11,6 +11,7 @@
         <item name="android:textColorPrimary">@color/colorTextDarkMedium</item>
 
         <item name="alertDialogStyle">@style/AlertDialogTheme</item>
+
     </style>
 
     <style name="MyToolbarStyle" parent="ThemeOverlay.AppCompat.Light">
