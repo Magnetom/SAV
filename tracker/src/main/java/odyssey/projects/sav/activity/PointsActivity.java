@@ -17,14 +17,11 @@ import android.widget.Toast;
 
 import java.text.DecimalFormat;
 
-import odyssey.projects.sav.db.OnModeChangedCallback;
 import odyssey.projects.sav.db.PointsListView;
-import odyssey.projects.sav.db.PointsListViewX;
 
 public class PointsActivity extends AppCompatActivity {
 
     private PointsListView pointsListView;
-    private PointsListViewX pointsListViewX;
     private LocationListener locationListener;
 
     private ConstraintLayout actionBarLayout;
@@ -81,12 +78,11 @@ public class PointsActivity extends AppCompatActivity {
 
         // Инициализация основного виджета.
         //pointsListView = new PointsListView(this, track);
-        pointsListViewX = new PointsListViewX(this, track);
+        pointsListView = new PointsListView(this, track);
 
         // Инициализация заголовка активити: название просматриваемого/редактируемого маршрута.
         TextView currTrack = findViewById(R.id.currentTrackNameView);
-        //if (currTrack != null && pointsListView != null) currTrack.setText(pointsListView.getTrackName(track));
-        //if (currTrack != null) currTrack.setText(pointsListViewX.getTrackName(track));
+        if (currTrack != null && pointsListView != null) currTrack.setText(pointsListView.getTrackName(track));
 
         // Инициализируем слушателей
         initListeners();
@@ -240,7 +236,7 @@ public class PointsActivity extends AppCompatActivity {
                                 if (pointName.getText().toString().equals("")) pointName.setText("новая точка");
 
                                 if (pointsListView != null)
-                                pointsListView.addPoint(pointsListView.getTrack(),
+                                    pointsListView.addPoint(pointsListView.getTrack(),
                                         pointName.getText().toString(),
                                         pointLatitude.getText().toString(),
                                         pointLongitude.getText().toString(),
@@ -249,17 +245,6 @@ public class PointsActivity extends AppCompatActivity {
                         })
                         .create()
                         .show();
-            }
-        });
-
-        // Регистрация слушателя - изменение режима просмотра списка точек (просмотр/редактирование).
-        if (pointsListView != null)
-        pointsListView.setOnModeChangedCallback(new OnModeChangedCallback() {
-            @Override
-            public void editMode(boolean mode) {
-                if (mode) setItemEditMode();
-                else
-                    setMainMode();
             }
         });
     }
