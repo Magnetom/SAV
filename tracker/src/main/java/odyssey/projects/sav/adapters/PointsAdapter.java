@@ -19,7 +19,12 @@ public class PointsAdapter extends RecyclerViewCursorAdapter<PointsAdapter.Point
 
     @Override
     public long getItemId(int position) {
-        return super.getItemId(position);
+        return mCursorAdapter.getItemId(position);
+    }
+
+    @Override
+    public int getItemViewType(int position) {
+        return mCursorAdapter.getItemViewType(position);
     }
 
     /**
