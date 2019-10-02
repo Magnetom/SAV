@@ -1,8 +1,9 @@
 package odyssey.projects.sav.test;
 
 import android.database.Cursor;
-import android.support.v7.widget.RecyclerView;
 import android.view.View;
+
+import androidx.recyclerview.widget.RecyclerView;
 
 /**
  * ViewHolder to be used with a RecyclerViewCursorAdapter.

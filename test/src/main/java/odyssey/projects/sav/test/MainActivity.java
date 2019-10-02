@@ -1,10 +1,10 @@
 package odyssey.projects.sav.test;
 
 import android.os.Bundle;
-import android.support.v7.widget.RecyclerView;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
 import java.util.List;

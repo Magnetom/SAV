@@ -2,8 +2,6 @@ package odyssey.projects.db;
 
 import android.content.Context;
 import android.database.Cursor;
-import android.support.v4.content.CursorLoader;
-import android.support.v4.content.Loader;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ListView;
@@ -11,6 +9,8 @@ import android.widget.SimpleCursorAdapter;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.loader.content.CursorLoader;
+import androidx.loader.content.Loader;
 
 import odyssey.projects.adapters.MarksCursorAdapter;
 import odyssey.projects.callbacks.CallbacksProvider;

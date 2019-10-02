@@ -8,12 +8,12 @@ package odyssey.projects.sav.driver;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.v4.view.ViewPager;
 import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.viewpager.widget.ViewPager;
 
 import odyssey.projects.adapters.ViewPagerAdapter;
 import odyssey.projects.callbacks.OnViewCreatedListener;
