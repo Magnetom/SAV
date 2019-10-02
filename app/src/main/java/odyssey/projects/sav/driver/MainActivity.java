@@ -8,17 +8,18 @@ package odyssey.projects.sav.driver;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.support.v4.view.ViewPager;
-import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+
 import odyssey.projects.adapters.ViewPagerAdapter;
+import odyssey.projects.callbacks.OnViewCreatedListener;
 import odyssey.projects.debug.DebugOut;
 import odyssey.projects.frames.DebugLogFragment;
 import odyssey.projects.frames.MainFragment;
-import odyssey.projects.callbacks.OnViewCreatedListener;
 import odyssey.projects.frames.UserSettingsPreferenceFragment;
 import odyssey.projects.pref.LocalSettings;
 import odyssey.projects.services.MarkOpService;

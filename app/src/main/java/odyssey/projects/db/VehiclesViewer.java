@@ -5,10 +5,8 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.database.Cursor;
-import android.support.annotation.NonNull;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
-import android.support.v7.app.AppCompatActivity;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,6 +14,9 @@ import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
 
 import odyssey.projects.adapters.VehiclesCursorAdapterNew;
 import odyssey.projects.callbacks.VehicleSelectedListener;
@@ -99,7 +100,7 @@ public final class VehiclesViewer extends DbProc {
 
                 view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
 
-                TextView vehicle = (TextView)view.findViewById(R.id.vehicleItemView);
+                TextView vehicle = view.findViewById(R.id.vehicleItemView);
                 if (callback != null) callback.onSelected(vehicle.getText().toString());
             }
         });
@@ -109,7 +110,7 @@ public final class VehiclesViewer extends DbProc {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
 
-                final TextView vehicle = (TextView)view.findViewById(R.id.vehicleItemView);
+                final TextView vehicle = view.findViewById(R.id.vehicleItemView);
                 if (vehicle == null || (vehicle.getText().length() == 0)) return true;
 
                 // Настраиваем диалоговое окно "Удалить госномер?".

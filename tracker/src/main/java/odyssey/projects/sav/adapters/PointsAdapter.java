@@ -2,15 +2,25 @@ package odyssey.projects.sav.adapters;
 
 import android.content.Context;
 import android.database.Cursor;
-import android.support.annotation.NonNull;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+
 import odyssey.projects.sav.activity.R;
 import odyssey.projects.sav.db.Db;
+import odyssey.projects.sav.widget.advrecyclerview.draggable.DraggableItemAdapter;
+import odyssey.projects.sav.widget.advrecyclerview.draggable.ItemDraggableRange;
+import odyssey.projects.sav.widget.advrecyclerview.utils.AbstractDraggableItemCursorViewHolder;
 
-public class PointsAdapter extends RecyclerViewCursorAdapter<PointsAdapter.PointsViewHolder> {
+public class PointsAdapter extends RecyclerViewCursorAdapter<PointsAdapter.PointsViewHolder>
+                            implements DraggableItemAdapter<PointsAdapter.PointsViewHolder> {
+
+    @Override
+    public long getItemId(int position) {
+        return super.getItemId(position);
+    }
 
     /**
      * Constructor.
@@ -18,7 +28,7 @@ public class PointsAdapter extends RecyclerViewCursorAdapter<PointsAdapter.Point
      */
     public PointsAdapter(Context context) {
         super(context);
-
+        setHasStableIds(true);
         setupCursorAdapter(null, 0, R.layout.points_list_item, false);
     }
 
@@ -50,7 +60,9 @@ public class PointsAdapter extends RecyclerViewCursorAdapter<PointsAdapter.Point
     /**
      * ViewHolder used to display a data.
      */
-    public class PointsViewHolder extends RecyclerViewCursorViewHolder {
+    //public class PointsViewHolder extends RecyclerViewCursorViewHolder
+    //public class PointsViewHolder extends AbstractDraggableItemViewHolder {
+    public class PointsViewHolder extends AbstractDraggableItemCursorViewHolder {
 
         final TextView mPointSequence;
         final TextView mPointName;
@@ -58,8 +70,9 @@ public class PointsAdapter extends RecyclerViewCursorAdapter<PointsAdapter.Point
         final TextView mPointLongitude;
         final TextView mPointTolerance;
 
+        View dragHandle;
 
-        PointsViewHolder(View view) {
+        public PointsViewHolder(View view) {
             super(view);
 
             mPointSequence  = view.findViewById(R.id.itemPointSequenceView);
@@ -67,7 +80,11 @@ public class PointsAdapter extends RecyclerViewCursorAdapter<PointsAdapter.Point
             mPointLatitude  = view.findViewById(R.id.itemLatitudeView);
             mPointLongitude = view.findViewById(R.id.itemLongitudeView);
             mPointTolerance = view.findViewById(R.id.toleranceView);
+
+            dragHandle = view.findViewById(R.id.drag_handle);
         }
+
+
 
         @Override
         public void bindCursor(Cursor cursor) {
@@ -79,5 +96,55 @@ public class PointsAdapter extends RecyclerViewCursorAdapter<PointsAdapter.Point
             mPointLongitude.setText(cursor.getString(Db.TABLE_POINTS_COLUMNS.ID_COLUMN_GPS_LONGITUDE));
             mPointTolerance.setText(cursor.getString(Db.TABLE_POINTS_COLUMNS.ID_COLUMN_GPS_TOLERANCE));
         }
+
+    }
+
+    @Override
+    public boolean onCheckCanStartDrag(PointsAdapter.PointsViewHolder holder, int position, int x, int y) {
+
+        View itemView = holder.itemView;
+        View dragHandle = holder.dragHandle;
+
+        int handleWidth  = dragHandle.getWidth();
+        int handleHeight = dragHandle.getHeight();
+        int handleLeft   = dragHandle.getLeft();
+        int handleTop    = dragHandle.getTop();
+
+        /*
+        return (x >= handleLeft) && (x < handleLeft + handleWidth) &&
+                (y >= handleTop) && (y < handleTop + handleHeight);
+          */
+         return true;
+    }
+
+    @Override
+    public void onMoveItem(int fromPosition, int toPosition) {
+        int ii = 0;
+        // ToDo: реализовать код в базе данных по пермещению записи...
+        // List<MyItem> items;
+        // MyItem removed = items.remove(fromPosition);
+        // items.add(toPosition, removed);
+    }
+
+    @Override
+    public ItemDraggableRange onGetItemDraggableRange(PointsAdapter.PointsViewHolder holder, int position) {
+        // just return null for default behavior
+        return null;
+    }
+
+    @Override
+    public boolean onCheckCanDrop(int draggingPosition, int dropPosition) {
+        // this method is not used unless calling `RecyclerViewDragDropManager.setCheckCanDropEnabled(true)` explicitly.
+        return true;
+    }
+
+    @Override
+    public void onItemDragStarted(int position) {
+        notifyDataSetChanged();
+    }
+
+    @Override
+    public void onItemDragFinished(int fromPosition, int toPosition, boolean result) {
+        notifyDataSetChanged();
     }
 }

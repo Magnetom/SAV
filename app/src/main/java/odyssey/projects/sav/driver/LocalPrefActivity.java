@@ -7,7 +7,8 @@ import android.database.sqlite.SQLiteException;
 import android.os.Bundle;
 import android.preference.CheckBoxPreference;
 import android.preference.PreferenceActivity;
-import android.support.v7.app.AlertDialog;
+
+import androidx.appcompat.app.AlertDialog;
 
 import odyssey.projects.callbacks.CallbacksProvider;
 import odyssey.projects.db.Db;

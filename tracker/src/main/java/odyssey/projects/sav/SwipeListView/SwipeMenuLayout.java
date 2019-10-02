@@ -1,8 +1,6 @@
 package odyssey.projects.sav.SwipeListView;
 
 import android.content.Context;
-import android.support.v4.view.GestureDetectorCompat;
-import android.support.v4.widget.ScrollerCompat;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.util.TypedValue;
@@ -13,6 +11,9 @@ import android.view.View;
 import android.view.animation.Interpolator;
 import android.widget.AbsListView;
 import android.widget.FrameLayout;
+
+import androidx.core.view.GestureDetectorCompat;
+import androidx.core.widget.ScrollerCompat;
 
 /**
  * 

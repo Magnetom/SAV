@@ -2,10 +2,11 @@ package odyssey.projects.adapters;
 
 import android.content.Context;
 import android.database.Cursor;
-import android.support.constraint.ConstraintLayout;
 import android.view.View;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
+
+import androidx.constraintlayout.widget.ConstraintLayout;
 
 import odyssey.projects.db.Db;
 import odyssey.projects.sav.driver.R;
