@@ -5,10 +5,17 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="70dp"
-    android:minHeight="70dp">
+    android:minHeight="70dp"
+    android:background="@color/colorWhite">
 
-    <!-- Content View(s) -->
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <!-- Drag&Drop item -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/container">
+
+        <!-- Content View(s) -->
+        <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/pointListItemLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -209,9 +216,13 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <!-- Drag handle -->
-    <View
+        <!-- Drag handle -->
+        <View
         android:id="@+id/drag_handle"
         android:layout_width="32dp"
-        android:layout_height="match_parent"/>
+        android:layout_height="match_parent"
+        android:clickable="true"
+        android:focusable="true" />
+
+    </FrameLayout>
 </FrameLayout>

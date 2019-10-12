@@ -4,18 +4,29 @@ import android.content.Context;
 import android.database.Cursor;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 
 import odyssey.projects.sav.activity.R;
 import odyssey.projects.sav.db.Db;
+import odyssey.projects.sav.db.OnPointsSwapCallback;
+import odyssey.projects.sav.utils.DrawableUtils;
+import odyssey.projects.sav.utils.ViewUtils;
 import odyssey.projects.sav.widget.advrecyclerview.draggable.DraggableItemAdapter;
+import odyssey.projects.sav.widget.advrecyclerview.draggable.DraggableItemState;
 import odyssey.projects.sav.widget.advrecyclerview.draggable.ItemDraggableRange;
 import odyssey.projects.sav.widget.advrecyclerview.utils.AbstractDraggableItemCursorViewHolder;
 
 public class PointsAdapter extends RecyclerViewCursorAdapter<PointsAdapter.PointsViewHolder>
                             implements DraggableItemAdapter<PointsAdapter.PointsViewHolder> {
+
+    OnPointsSwapCallback onPointsSwapCallback;
+
+    public void setOnPointsSwapCallback (OnPointsSwapCallback callback){
+        onPointsSwapCallback = callback;
+    }
 
     @Override
     public long getItemId(int position) {
@@ -60,6 +71,28 @@ public class PointsAdapter extends RecyclerViewCursorAdapter<PointsAdapter.Point
 
         // Bind this view
         mCursorAdapter.bindView(null, mContext, mCursorAdapter.getCursor());
+
+        // Установка заднего фона для перемещаемого элемента.
+        // set background resource (target view ID: container)
+        final DraggableItemState dragState = holder.getDragState();
+
+        if (dragState.isUpdated()) {
+            int bgResId;
+
+            if (dragState.isActive()) {
+                bgResId = R.drawable.bg_item_dragging_active_state;
+
+                // need to clear drawable state here to get correct appearance of the dragging item.
+                DrawableUtils.clearState(holder.mContainer.getForeground());
+            } else if (dragState.isDragging()) {
+                bgResId = R.drawable.bg_item_dragging_state;
+            } else {
+                bgResId = R.drawable.bg_item_normal_state;
+            }
+
+            holder.mContainer.setBackgroundResource(bgResId);
+        }
+
     }
 
     /**
@@ -69,57 +102,58 @@ public class PointsAdapter extends RecyclerViewCursorAdapter<PointsAdapter.Point
     //public class PointsViewHolder extends AbstractDraggableItemViewHolder {
     public class PointsViewHolder extends AbstractDraggableItemCursorViewHolder {
 
+        // Элементы для работы AdvancedRecyclerView.
+        FrameLayout mContainer;
+        View mDragHandle;
+
+        // Графические элементы пользователя.
         final TextView mPointSequence;
         final TextView mPointName;
         final TextView mPointLatitude;
         final TextView mPointLongitude;
         final TextView mPointTolerance;
 
-        View dragHandle;
-
-        public PointsViewHolder(View view) {
+        PointsViewHolder(View view) {
             super(view);
 
+            // Получаем вспомогательные элементы для работы AdvancedRecyclerView.
+            mContainer  = view.findViewById(R.id.container);
+            mDragHandle = view.findViewById(R.id.drag_handle);
+
+            // Заполняются графические элементы пользователя.
             mPointSequence  = view.findViewById(R.id.itemPointSequenceView);
             mPointName      = view.findViewById(R.id.pointNameView);
             mPointLatitude  = view.findViewById(R.id.itemLatitudeView);
             mPointLongitude = view.findViewById(R.id.itemLongitudeView);
             mPointTolerance = view.findViewById(R.id.toleranceView);
-
-            dragHandle = view.findViewById(R.id.drag_handle);
         }
-
-
 
         @Override
         public void bindCursor(Cursor cursor) {
-            //mMovieName.setText(cursor.getString(NAME_INDEX));
-
             mPointSequence.setText( cursor.getString(Db.TABLE_POINTS_COLUMNS.ID_COLUMN_SEQUENCE));
+            //mPointSequence.setText( String.format(Locale.US,"%d", cursor.getPosition()+1));
             mPointName.setText(     cursor.getString(Db.TABLE_POINTS_COLUMNS.ID_COLUMN_POINT));
             mPointLatitude.setText( cursor.getString(Db.TABLE_POINTS_COLUMNS.ID_COLUMN_GPS_LATITUDE));
             mPointLongitude.setText(cursor.getString(Db.TABLE_POINTS_COLUMNS.ID_COLUMN_GPS_LONGITUDE));
             mPointTolerance.setText(cursor.getString(Db.TABLE_POINTS_COLUMNS.ID_COLUMN_GPS_TOLERANCE));
         }
-
     }
 
     @Override
-    public boolean onCheckCanStartDrag(PointsAdapter.PointsViewHolder holder, int position, int x, int y) {
+    public boolean onCheckCanStartDrag(@NonNull PointsAdapter.PointsViewHolder holder, int position, int x, int y) {
 
-        View itemView = holder.itemView;
-        View dragHandle = holder.dragHandle;
+        // Начинать Drag&Drop только в случае нажатия (короткого или длительного) на специальный элемент DragHandle (т.е. mDragHandle).
+        // x, y --- relative from the itemView's top-left
+        final View containerView  = holder.mContainer;
+        final View dragHandleView = holder.mDragHandle;
 
-        int handleWidth  = dragHandle.getWidth();
-        int handleHeight = dragHandle.getHeight();
-        int handleLeft   = dragHandle.getLeft();
-        int handleTop    = dragHandle.getTop();
+        final int offsetX = containerView.getLeft() + (int) (containerView.getTranslationX() + 0.5f);
+        final int offsetY = containerView.getTop() + (int) (containerView.getTranslationY() + 0.5f);
 
-        /*
-        return (x >= handleLeft) && (x < handleLeft + handleWidth) &&
-                (y >= handleTop) && (y < handleTop + handleHeight);
-          */
-         return true;
+        return ViewUtils.hitTest(dragHandleView, x - offsetX, y - offsetY);
+
+        // Начинать Drag&Drop в любом случае, где бы ни было касание (или длительное нажатие) на элементе списка.
+        //return true;
     }
 
     @Override
@@ -129,10 +163,14 @@ public class PointsAdapter extends RecyclerViewCursorAdapter<PointsAdapter.Point
         // List<MyItem> items;
         // MyItem removed = items.remove(fromPosition);
         // items.add(toPosition, removed);
+
+        int point_id = mCursorAdapter.getCursor().getInt(Db.TABLE_POINTS_COLUMNS.ID_COLUMN_ID);
+
+        if (onPointsSwapCallback != null) onPointsSwapCallback.OnSwap(point_id, toPosition + 1);
     }
 
     @Override
-    public ItemDraggableRange onGetItemDraggableRange(PointsAdapter.PointsViewHolder holder, int position) {
+    public ItemDraggableRange onGetItemDraggableRange(@NonNull PointsAdapter.PointsViewHolder holder, int position) {
         // just return null for default behavior
         return null;
     }

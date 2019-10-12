@@ -185,19 +185,8 @@ public abstract class DbProcX implements LoaderManager.LoaderCallbacks<Cursor>{
         return track;
     }
 
-    void selectPoint(Long point_id, boolean select){
-        db.selectPoint(point_id, select);
-        this.loadManagerForceLoad(context);
+    // Переместить точку point_id в позицию to_pos.
+    boolean movePoint (int point_id, int to_pos){
+        return db.movePoint(point_id, to_pos);
     }
-
-    void togglePointSelection(Long point_id){
-        db.togglePointSelection(point_id);
-        this.loadManagerForceLoad(context);
-    }
-
-    void clearAllPointsSelection(){
-        db.clearAllPointsSelection();
-        this.loadManagerForceLoad(context);
-    }
-
 }

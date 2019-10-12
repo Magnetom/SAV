@@ -29,7 +29,7 @@ public abstract class RecyclerViewCursorAdapter<T extends RecyclerViewCursorView
      * ViewHolder object to bind Cursor data to. A class level variable is created to pass the
      * ViewHolder between RecyclerView.Adapter.bindView() and CursorAdapter.bindView()
      */
-    private T mViewHolder;
+    protected T mViewHolder;
 
     /**
      * Constructor.

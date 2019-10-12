@@ -32,6 +32,14 @@ public class PointsListView extends DbProcX{
     @Override
     void setupAdapter(Context context) {
         adapter = new PointsAdapter(context);
+
+        // Коллбэк вызывается при необходимости поменять точки маршрута местами.
+        adapter.setOnPointsSwapCallback(new OnPointsSwapCallback() {
+            @Override
+            public void OnSwap(int point_id, int to_pos) {
+                db.movePoint(point_id, to_pos);
+            }
+        });
     }
 
     @Override
@@ -42,6 +50,7 @@ public class PointsListView extends DbProcX{
         dragDropManager.setDraggingItemShadowDrawable((NinePatchDrawable) context.getDrawable(R.drawable.material_shadow_z3));
         dragDropManager.setInitiateOnMove(false);
         dragDropManager.setInitiateOnLongPress(true);
+        dragDropManager.setLongPressTimeout(750);
 
         // Adapter
         RecyclerView.Adapter wrappedAdapter = dragDropManager.createWrappedAdapter(adapter);
@@ -49,7 +58,6 @@ public class PointsListView extends DbProcX{
         // RecyclerView
         final RecyclerView recyclerView = ((AppCompatActivity) context).findViewById(R.id.pointsRecyclerView);
         if (recyclerView == null) return;
-
 
         /*
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(context);
@@ -61,7 +69,7 @@ public class PointsListView extends DbProcX{
         // Когда RecyclerView не планирует изменять размеры своих дочерних элементов динамически.
         // В результате recyclerView не будет перерисовываться каждый раз, когда в элементе списка
         // обновятся данные, этот элемент перерисуется самостоятельно.
-        //recyclerView.setHasFixedSize(true);
+        recyclerView.setHasFixedSize(true);
 
         // Декорирования элементов списка.
         //DividerItemDecoration mDividerItemDecoration = new DividerItemDecoration(recyclerView.getContext(), linearLayoutManager.getOrientation());
@@ -102,8 +110,6 @@ public class PointsListView extends DbProcX{
         MyCursorLoader(@NonNull Context context, Db db) {
             super(context);
             this.db = db;
-            // Снимаем выделения со всех элементов списка, если таковые были.
-            db.clearAllPointsSelection();
         }
         @Override
         public Cursor loadInBackground() {
